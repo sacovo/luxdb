@@ -13,20 +13,34 @@ cache:
   paths:
   - ".cache/pip"
   - venv/
-before_script:
-- python -V
-- pip install virtualenv
-- virtualenv venv
-- source venv/bin/activate
-- pip install pip-tools
-- pip-sync requirements.txt dev-requirements.txt
 bandit-job:
+  before_script:
+  - python -V
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install pip-tools
+  - pip-sync requirements.txt dev-requirements.txt
   stage: lint
   script: bandit --recursive luxdb
 pylint-job:
+  before_script:
+  - python -V
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install pip-tools
+  - pip-sync requirements.txt dev-requirements.txt
   stage: lint
   script: pylint luxdb
 pytest-job:
+  before_script:
+  - python -V
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install pip-tools
+  - pip-sync requirements.txt dev-requirements.txt
   stage: test
   script:
   - coverage run
