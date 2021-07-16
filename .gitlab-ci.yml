@@ -1,39 +1,38 @@
+# You can override the included template(s) by including variable overrides
+# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
+# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 image: python:latest
-
-stages:          # List of stages for jobs, and their order of execution
-  - lint
-  - test
-  - deploy
-
+stages:
+- lint
+- test
+- deploy
 cache:
   paths:
-    - .cache/pip
-    - venv/
-
+  - ".cache/pip"
+  - venv/
 before_script:
-  - python -V  # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
-  - pip install pip-tools
-  - pip-sync requirements.txt dev-requirements.txt
-
+- python -V
+- pip install virtualenv
+- virtualenv venv
+- source venv/bin/activate
+- pip install pip-tools
+- pip-sync requirements.txt dev-requirements.txt
 bandit-job:
-    stage: lint
-    script:
-        bandit --recursive luxdb
-
+  stage: lint
+  script: bandit --recursive luxdb
 pylint-job:
-    stage: lint
-    script:
-        pylint luxdb
-
+  stage: lint
+  script: pylint luxdb
 pytest-job:
   stage: test
   script:
-    - coverage run
-    - coverage xml
+  - coverage run
+  - coverage xml
   artifacts:
     reports:
       cobertura: coverage.xml
-
+include:
+- template: Security/Secret-Detection.gitlab-ci.yml
