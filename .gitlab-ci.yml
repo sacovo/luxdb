@@ -42,8 +42,10 @@ pytest-job:
   - pip install pip-tools
   - pip-sync requirements.txt dev-requirements.txt
   stage: test
+  coverage: /^TOTAL.+?(\d+\%)$/
   script:
   - coverage run
+  - coverage report
   - coverage xml
   artifacts:
     reports:
