@@ -45,6 +45,7 @@ pytest-job:
   coverage: /^TOTAL.+?(\d+\%)$/
   script:
   - coverage run
+  - coverage report
   - coverage xml
   artifacts:
     reports:
