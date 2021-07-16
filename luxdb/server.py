@@ -4,10 +4,10 @@ import asyncio
 import logging
 import socket
 
-from luxdb.connection import receive_command, write_result
+from luxdb.connection import receive_command, send_result
 from luxdb.knn_store import KNNStore, open_store
 
-LOG = logging.getLogger("server")
+LOG = logging.getLogger('server')
 
 
 class Server:
@@ -31,7 +31,7 @@ class Server:
         while command is not None:
             result = await command.execute(self.store)
 
-            await write_result(writer, result)
+            await send_result(writer, result)
 
             command = await receive_command(reader)
 
@@ -71,26 +71,26 @@ async def serve(args: dict):
         try:
             await server.start()
         except KeyboardInterrupt:
-            print("Shutting down server..")
+            print('Shutting down server..')
 
 
 def main():
     """Main method for the server."""
     try:
-        parser = argparse.ArgumentParser(description="Multidimensional vector database (server).")
+        parser = argparse.ArgumentParser(description='Multidimensional vector database (server).')
 
-        parser.add_argument("--host", type=str, default='127.0.0.1', help="Host where the server should listen.")
-        parser.add_argument("--port", type=int, default=None, help="Port to listen on.")
+        parser.add_argument('--host', type=str, default='127.0.0.1', help='Host where the server should listen.')
+        parser.add_argument('--port', type=int, default=None, help='Port to listen on.')
         parser.add_argument(
             '-log',
             '--loglevel',
             default='warning',
             help='Provide logging level. Example --loglevel debug, default=warning',
         )
-        parser.add_argument("path", type=str, help="Path where the database is stored or should be stored.")
+        parser.add_argument('path', type=str, help='Path where the database is stored or should be stored.')
         args = parser.parse_args()
         logging.basicConfig(level=args.loglevel.upper())
 
         asyncio.run(serve(args), debug=args.loglevel.upper() == 'DEBUG')
     except KeyboardInterrupt:
-        print("Shutting down server...")
+        print('Shutting down server...')

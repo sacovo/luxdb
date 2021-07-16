@@ -10,9 +10,6 @@ from luxdb.knn_store import IndexAlreadyExistsException, open_store
 from luxdb.server import Server
 from tests import generate_data
 
-HOST = '127.0.0.1'
-PORT = 8888
-
 
 def server_thread(host, port, path, barrier):
 
@@ -26,7 +23,7 @@ def server_thread(host, port, path, barrier):
 @pytest.fixture
 def start_server(tmpdir, unused_tcp_port):
     barrier = threading.Barrier(2, timeout=1)
-    thread = threading.Thread(target=server_thread, args=('127.0.0.1', unused_tcp_port, tmpdir / "store.db", barrier))
+    thread = threading.Thread(target=server_thread, args=('127.0.0.1', unused_tcp_port, tmpdir / 'store.db', barrier))
 
     thread.daemon = True
     thread.start()
