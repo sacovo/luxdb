@@ -63,14 +63,8 @@ class Server:
             await self.server.serve_forever()
 
 
-async def main():
+async def serve(args: dict):
     """Main method for the server thread."""
-    parser = argparse.ArgumentParser(description="Multidimensional vector database (server).")
-
-    parser.add_argument("--host", type=str, default='127.0.0.1', help="Host where the server should listen.")
-    parser.add_argument("--port", type=int, default=None, help="Port to listen on.")
-    parser.add_argument("path", type=str, help="Path where the database is stored or should be stored.")
-    args = parser.parse_args()
 
     with open_store(args.path) as store:
         server = Server(host=args.host, port=args.port, store=store)
@@ -80,9 +74,23 @@ async def main():
             print("Shutting down server..")
 
 
-if __name__ == "__main__":
+def main():
+    """Main method for the server."""
     try:
-        logging.basicConfig(level=logging.DEBUG)
-        asyncio.run(main(), debug=True)
+        parser = argparse.ArgumentParser(description="Multidimensional vector database (server).")
+
+        parser.add_argument("--host", type=str, default='127.0.0.1', help="Host where the server should listen.")
+        parser.add_argument("--port", type=int, default=None, help="Port to listen on.")
+        parser.add_argument(
+            '-log',
+            '--loglevel',
+            default='warning',
+            help='Provide logging level. Example --loglevel debug, default=warning',
+        )
+        parser.add_argument("path", type=str, help="Path where the database is stored or should be stored.")
+        args = parser.parse_args()
+        logging.basicConfig(level=args.loglevel.upper())
+
+        asyncio.run(serve(args), debug=args.loglevel.upper() == 'DEBUG')
     except KeyboardInterrupt:
         print("Shutting down server...")
