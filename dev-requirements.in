@@ -1,0 +1,10 @@
+-c requirements.txt
+# Linting
+pylint
+bandit
+
+# Testing
+numpy
+pytest
+pytest-asyncio
+coverage
