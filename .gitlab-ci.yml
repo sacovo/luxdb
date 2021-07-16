@@ -1,0 +1,39 @@
+image: python:latest
+
+stages:          # List of stages for jobs, and their order of execution
+  - lint
+  - test
+  - deploy
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V  # Print out python version for debugging
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install pip-tools
+  - pip-sync requirements.txt dev-requirements.txt
+
+bandit-job:
+    stage: lint
+    script:
+        bandit --recursive luxdb
+
+pylint-job:
+    stage: lint
+    script:
+        pylint luxdb
+
+pytest-job:
+  stage: test
+  script:
+    - coverage run
+    - coverage xml
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+
