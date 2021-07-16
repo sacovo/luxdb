@@ -18,7 +18,26 @@ There is also no authentication, you need to provide that through a proxy or mak
 
 So there is just creation of indexes, adding items and searching for near neighbors in the indexes.
 
-```Python
+## Usage
+
+Start the server, either with docker:
+
+```bash
+docker run -p 8484:8484 registry.gitlab.com/sacovo/luxdb
+docker run -p 8484:8484 registry.gitlab.com/sacovo/luxdb --loglevel=info --port 8484 --host 0.0.0.0
+```
+
+Or directly (after installing the dependencies in requirements.txt)
+```
+./luxdb-server --port 8484 --loglevel debug path/to/storage.db
+```
+
+The docker container stores the database in `/data/` so you can mount something there in order to store data.
+
+You can then use the client to connect to the server and add or retrieve data.
+
+```python
+from luxdb.client import connect
 # Connect to the server
 async with connect(host, port) as client:
 	name = 'my-index'
@@ -34,7 +53,6 @@ async with connect(host, port) as client:
 	found, distances = await client.query_index(name, data[0], k=5)
 	# Or the nearest neighbors of all elements
 	found, distances = await client.query_index(name, data, k=2)
-	
 ```
 For more usage examples you can check the tests in `tests/test_client.py`
 
