@@ -1,8 +1,8 @@
 """Helper functions to send and receive objects over socket streams."""
 import asyncio
-import socket
 import logging
 import pickle  # nosec
+import socket
 from typing import Tuple
 
 from luxdb.commands import Command, Result

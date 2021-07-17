@@ -10,21 +10,19 @@ from luxdb.exceptions import IndexDoesNotExistException
 from luxdb.knn_store import (IndexAlreadyExistsException, KNNStore, UnknownSpaceException, open_store)
 from tests import generate_data
 
-DB_STORE = 'test.bin'
-
 
 class TestStore:
     """Test store functionality"""
     def test_create_index(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         store.create_index('test', 'l2', 12)
 
         assert store.index_exists('test')
 
     def test_separate_stores(self):
-        store1 = KNNStore(DB_STORE)
-        store2 = KNNStore(DB_STORE + "2")
+        store1 = KNNStore()
+        store2 = KNNStore()
         store1.create_index('test', 'l2', 12)
 
         assert store1.index_exists('test')
@@ -35,14 +33,14 @@ class TestStore:
         assert store2.index_exists('test')
 
     def test_index_does_not_exist(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         with pytest.raises(IndexDoesNotExistException):
-            store.info("this-does-not-exist")
+            store.info('this-does-not-exist')
 
     def test_remove_index(self):
-        store = KNNStore(DB_STORE)
-        name = "test-remove"
+        store = KNNStore()
+        name = 'test-remove'
         store.create_index(name, 'l2', 12)
 
         store.delete_index(name)
@@ -50,8 +48,8 @@ class TestStore:
         assert store.index_exists(name) == False
 
     def test_set_ef(self):
-        store = KNNStore(DB_STORE)
-        name = "test-set-ef"
+        store = KNNStore()
+        name = 'test-set-ef'
 
         store.create_index(name, 'l2', 12)
         store.init_index(name, 120)
@@ -61,7 +59,7 @@ class TestStore:
         assert store.get_ef(name) == 210
 
     def test_unknown_space(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         space = 'l1'
 
@@ -69,7 +67,7 @@ class TestStore:
             store.create_index('test-unknown', space, 10)
 
     def test_init_index(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         max_elements = 1000
         dimension = 12
@@ -92,7 +90,7 @@ class TestStore:
         assert store.get_ef_construction(name) == ef_construction
 
     def test_resize_index(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
         name = 'test-resize'
         dimension = 12
         max_elements = 1000
@@ -106,7 +104,7 @@ class TestStore:
         assert store.max_elements(name) == 1200
 
     def test_create_twice_raises(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         dimension = 12
         name = 'test-twice'
@@ -119,7 +117,7 @@ class TestStore:
             store.create_index(name, 'l2', dimension)
 
     def test_adding_elements(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         max_elements = 1000
         dimension = 12
@@ -138,7 +136,7 @@ class TestStore:
         assert store.count(name) == num_elements
 
     def test_query(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         max_elements = 600
         dimension = 6
@@ -167,7 +165,7 @@ class TestStore:
         assert distances.shape == (20, 2)
 
     def test_delete(self):
-        store = KNNStore(DB_STORE)
+        store = KNNStore()
 
         max_elements = 12
         dimension = 5
@@ -203,7 +201,7 @@ class TestStore:
 
         store.add_items(name, data, ids)
 
-        store.save_database()
+        store.close()
 
         del store
 
@@ -218,13 +216,17 @@ class TestStore:
         dim = 10
         max_elements = 1000
         name = 'test-context'
+        num_elements = 500
 
         with open_store(path) as store:
             store.create_index(name, 'l2', dim)
             store.init_index(name, max_elements)
+            data, ids = generate_data(num_elements, dim)
+            store.add_items(name, data, ids)
 
         assert os.path.exists(path)
 
         with open_store(path) as store:
             assert store.index_exists(name)
+            assert store.count(name) == num_elements
             assert store.max_elements(name) == max_elements

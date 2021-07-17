@@ -17,7 +17,7 @@ class TestCommands:
             def execute_command(self, store: KNNStore, **kwargs):
                 return (store, kwargs)
 
-        store = KNNStore('test.db')
+        store = KNNStore()
 
         kwargs = {'name': 'test_base', 'a': 1, 'b': 3}
         test_command = TestCommand(**kwargs)
@@ -36,7 +36,7 @@ class TestCommands:
 
     @pytest.mark.asyncio
     async def test_execute_non_command(self):
-        store = KNNStore('test')
+        store = KNNStore()
         with pytest.raises(NotACommandException):
             execute_command(object(), store)
 
@@ -48,7 +48,7 @@ class TestCommands:
 
         kwargs = {'name': 'test_base', 'a': 1, 'b': 3}
 
-        store = KNNStore('test.db')
+        store = KNNStore()
         command = TestFailingCommand(**kwargs)
         await command.execute(store)
 
@@ -66,25 +66,25 @@ class TestCommands:
 
     @pytest.mark.asyncio
     async def test_create_index_command(self):
-        store = KNNStore('test-create-command')
-        name = "test-create"
-        command = CreateIndexCommand(name=name, space="l2", dim=12)
+        store = KNNStore()
+        name = 'test-create'
+        command = CreateIndexCommand(name=name, space='l2', dim=12)
         await command.execute(store)
         assert store.index_exists(name)
         assert command.state == CommandState.SUCCEEDED
 
-        command = CreateIndexCommand(name=name, space="l2", dim=12)
+        command = CreateIndexCommand(name=name, space='l2', dim=12)
         await command.execute(store)
         assert command.state == CommandState.FAILED
 
     @pytest.mark.asyncio
     async def test_add_items_command(self):
-        store = KNNStore('test-add-items')
-        name = "test-add-items"
+        store = KNNStore()
+        name = 'test-add-items'
         dim = 12
         num_elements = 50
 
-        await execute_command(CreateIndexCommand(name=name, space="l2", dim=dim), store)
+        await execute_command(CreateIndexCommand(name=name, space='l2', dim=dim), store)
         await execute_command(InitIndexCommand(name=name, max_elements=100), store)
 
         data, ids = generate_data(num_elements, dim)
@@ -98,7 +98,7 @@ class TestCommands:
     def test_serialization(self):
         name = 'test'
 
-        cmd = CreateIndexCommand(name=name, space="l2", dim=12)
+        cmd = CreateIndexCommand(name=name, space='l2', dim=12)
         serialized = pickle.dumps(cmd)
         deserialized_cmd = pickle.loads(serialized)
 

@@ -4,9 +4,9 @@ import threading
 
 import pytest
 
-from luxdb.sync_client import SyncClient, connect
 from luxdb.knn_store import IndexAlreadyExistsException, open_store
 from luxdb.server import Server
+from luxdb.sync_client import SyncClient, connect
 from tests import generate_data
 
 
