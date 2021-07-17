@@ -7,9 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY luxdb ./luxdb/
-
-COPY luxdb-server LICENSE ./
+COPY src luxdb-server LICENSE ./
 
 RUN groupadd -g 1020 -r luxdb && \
     useradd -u 1020 --no-log-init -r -g luxdb luxdb && \
