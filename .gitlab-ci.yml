@@ -24,6 +24,10 @@ bandit-job:
   - pip install -e .
   stage: lint
   script: bandit --recursive src
+  only:
+    changes:
+      - src/*
+
 pylint-job:
   before_script:
   - python -V
@@ -35,6 +39,7 @@ pylint-job:
   - pip install -e .
   stage: lint
   script: pylint src/
+
 pytest-job:
   before_script:
   - python -V
@@ -53,10 +58,13 @@ pytest-job:
   artifacts:
     reports:
       cobertura: coverage.xml
+
 sast:
   stage: test
   variables:
     SAST_BANDIT_EXCLUDED_PATHS: "*/tests/*,*/venv/*"
+
+
 docker-build:
   image: docker:latest
   stage: build
@@ -79,6 +87,10 @@ docker-build:
   - if: "$CI_COMMIT_BRANCH"
     exists:
     - Dockerfile
+    changes:
+      - Dockerfile
+      - src/*
+      - luxdb-server
 
 pypi-build:
   image: python:latest
