@@ -1,22 +1,23 @@
 # LuxDB
 
-This is a simple database for multidimensional vectors. It basically provides persistance and connectivity with asyncio to [Hnswlib](https://github.com/nmslib/hnswlib). The project contains the server and also a simple client. 
+This is a simple database for multidimensional vectors. It basically provides persistance and connectivity with asyncio to [Hnswlib](https://github.com/nmslib/hnswlib). The project contains the server and also a simple client.
 
-Still under heavy development, there will be breaking changes and you will loose data if you only store it in this database. So don't use it for anything that you want to keep.
+Still under development, there will be breaking changes and you will loose data if you only store it in this database. So don't use it for anything that you want to keep.
 
 ### TODO
-- Sane storage backend (not pickle)
+- ~~Sane storage backend (not pickle)~~ (Might still need some polishing)
 - Language agnostic transport layer
 - Performance?
 - Rollbacks, transactions, ...
 - Authentication
 
 ## (Lack of) Features
-At the moment there is only simple persistence through python pickles, and data is only written to the disk at shutdown. This is only for the moment, and the project will probably use something like [ZODB](https://zodb.org/en/latest/index.html) to provide better persistence.
 
-There is also no authentication, you need to provide that through a proxy or make sure you are only allowing access to the database to trusted clients.
+Persistence is achieved with [ZOBD](https://zodb.org), each index is stored seperatly in a `OOBTree`. The store can be created with a path, in that case a `FileStorage` will be created there. You can also provide a Storage in the constructor of the storage. For testing you can omit `path` and `storage`, in that case the data will be stored in memory only.
 
-So there is just creation of indexes, adding items and searching for near neighbors in the indexes.
+There is no authentication, you need to provide that through a proxy or make sure you are only allowing access to the database to trusted clients.
+
+So there is just creation of indexes, adding items and searching for near neighbors in the indexes as well as storing them on the file system.
 
 ## Usage
 

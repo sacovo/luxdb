@@ -18,7 +18,6 @@ repos:
       - id: check-added-large-files
       - id: check-yaml
       - id: debug-statements
-      - id: requirements-txt-fixer
       - id: check-merge-conflict
       - id: double-quote-string-fixer
       - id: end-of-file-fixer

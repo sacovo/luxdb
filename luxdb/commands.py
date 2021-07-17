@@ -8,7 +8,7 @@ from functools import partial
 from luxdb.exceptions import KNNBaseException, NotACommandException
 from luxdb.knn_store import KNNStore
 
-LOG = logging.getLogger("commands")
+LOG = logging.getLogger('commands')
 
 
 class CommandState(Enum):
@@ -53,20 +53,20 @@ class Command:
         self.state = CommandState.EXECUTED
         try:
             if self.is_cpu_heavy:
-                LOG.debug("Executing command %r in thread pool.", self)
+                LOG.debug('Executing command %r in thread pool.', self)
                 loop = asyncio.get_running_loop()
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     self.result = await loop.run_in_executor(pool,
                                                              partial(self.execute_command, store, **self.command_args))
             else:
-                LOG.debug("Executing command %r in event loop.", self)
+                LOG.debug('Executing command %r in event loop.', self)
                 self.result = self.execute_command(store, **self.command_args)
             self.state = CommandState.SUCCEEDED
         except KNNBaseException as e:
             self.result = e
             self.state = CommandState.FAILED
         except Exception as e:  # pylint: disable=W0703
-            logging.getLogger().exception("Unhandled exception %r", e)
+            logging.getLogger().exception('Unhandled exception %r', e)
             self.result = e
             self.state = CommandState.FAILED
 
@@ -74,14 +74,14 @@ class Command:
 
     def execute_command(self, store: KNNStore, **kwargs):
         """Commands need to implement this to return the command."""
-        raise NotImplementedError("Commands need to provide this method")
+        raise NotImplementedError('Commands need to provide this method')
 
 
 def execute_command(command: Command, store: KNNStore):
     """Checks if the command is an instance of command and if so execute it."""
     if isinstance(command, Command):
         return command.execute(store)
-    raise NotACommandException("Command is not instance of command!")
+    raise NotACommandException('Command is not instance of command!')
 
 
 class CreateIndexCommand(Command):
@@ -113,8 +113,6 @@ class DeleteIndexCommand(Command):
 
 class AddItemsCommand(Command):
     """Add items to the specified index."""
-    is_cpu_heavy = True
-
     def execute_command(self, store: KNNStore, **kwargs):
         return store.add_items(**kwargs)
 

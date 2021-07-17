@@ -6,23 +6,9 @@ from typing import Dict
 
 import numpy.typing as npt
 
-from luxdb.commands import (
-    AddItemsCommand,
-    CountCommand,
-    CreateIndexCommand,
-    DeleteIndexCommand,
-    DeleteItemCommand,
-    GetEFCommand,
-    GetEFConstructionCommand,
-    IndexExistsCommand,
-    InfoCommand,
-    InitIndexCommand,
-    MaxElementsCommand,
-    QueryIndexCommand,
-    ResizeIndexCommand,
-    Result,
-    SetEFCommand,
-)
+from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
+                            GetEFCommand, GetEFConstructionCommand, IndexExistsCommand, InfoCommand, InitIndexCommand,
+                            MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
 from luxdb.connection import receive_result, send_close, send_command
 
 
