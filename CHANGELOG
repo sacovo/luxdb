@@ -1,0 +1,21 @@
+# Changelog
+
+## [0.0.3] - 2021-07-17
+### Improved
+- Adding elements to an index does not block async event loop
+### Added
+- Command to request the names of all indexes
+
+## [0.0.2] - 2021-07-17
+### Improved
+- Storing data now uses ZODB
+- Test with multiple connections at the same time
+
+## [0.0.1] - 2021-07-17
+### Added
+- Creating, deleting indexes
+- Adding items
+- Making queries
+- Simple clients (async and sync)
+- Using pickle to save database to disk
+- docker container
