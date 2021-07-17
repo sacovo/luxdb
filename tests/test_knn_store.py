@@ -89,7 +89,8 @@ class TestStore:
         assert store.count(name) == 0
         assert store.get_ef_construction(name) == ef_construction
 
-    def test_resize_index(self):
+    @pytest.mark.asyncio
+    async def test_resize_index(self):
         store = KNNStore()
         name = 'test-resize'
         dimension = 12
@@ -97,10 +98,10 @@ class TestStore:
         store.create_index(name, 'l2', dimension)
         store.init_index(name, max_elements)
 
-        store.resize_index(name, 500)
+        await store.resize_index(name, 500)
 
         assert store.max_elements(name) == 500
-        store.resize_index(name, 1200)
+        await store.resize_index(name, 1200)
         assert store.max_elements(name) == 1200
 
     def test_create_twice_raises(self):
@@ -116,7 +117,8 @@ class TestStore:
         with pytest.raises(IndexAlreadyExistsException):
             store.create_index(name, 'l2', dimension)
 
-    def test_adding_elements(self):
+    @pytest.mark.asyncio
+    async def test_adding_elements(self):
         store = KNNStore()
 
         max_elements = 1000
@@ -131,11 +133,12 @@ class TestStore:
 
         data, ids = generate_data(num_elements, dimension)
 
-        store.add_items(name, data, ids)
+        await store.add_items(name, data, ids)
 
         assert store.count(name) == num_elements
 
-    def test_query(self):
+    @pytest.mark.asyncio
+    async def test_query(self):
         store = KNNStore()
 
         max_elements = 600
@@ -148,23 +151,24 @@ class TestStore:
         num_elements = 500
 
         data, ids = generate_data(num_elements, dimension)
-        store.add_items(name, data, ids)
+        await store.add_items(name, data, ids)
 
-        labels, distances = store.query_index(name, data, k=1)
+        labels, distances = await store.query_index(name, data, k=1)
         assert all(labels.reshape(ids.shape) == ids)
 
         assert len(labels) == num_elements
         assert len(distances) == num_elements
 
-        labels, distances = store.query_index(name, data, k=2)
+        labels, distances = await store.query_index(name, data, k=2)
         assert labels.shape == (num_elements, 2)
         assert distances.shape == (num_elements, 2)
 
-        labels, distances = store.query_index(name, data[:20], k=2)
+        labels, distances = await store.query_index(name, data[:20], k=2)
         assert labels.shape == (20, 2)
         assert distances.shape == (20, 2)
 
-    def test_delete(self):
+    @pytest.mark.asyncio
+    async def test_delete(self):
         store = KNNStore()
 
         max_elements = 12
@@ -176,14 +180,15 @@ class TestStore:
 
         data, ids = generate_data(10, dimension)
 
-        store.add_items(name, data, ids)
+        await store.add_items(name, data, ids)
         store.delete_item(name, ids[0])
 
-        labels, _ = store.query_index(name, data, k=2)
+        labels, _ = await store.query_index(name, data, k=2)
 
         assert ids[0] not in labels
 
-    def test_store_and_load(self, tmpdir):
+    @pytest.mark.asyncio
+    async def test_store_and_load(self, tmpdir):
         path = tmpdir / 'test.db'
 
         store = KNNStore(path)
@@ -199,7 +204,7 @@ class TestStore:
 
         data, ids = generate_data(num_elements, dimension)
 
-        store.add_items(name, data, ids)
+        await store.add_items(name, data, ids)
 
         store.close()
 
@@ -211,7 +216,8 @@ class TestStore:
         assert store.index_exists(name)
         assert store.count(name) == num_elements
 
-    def test_contextmanager(self, tmpdir):
+    @pytest.mark.asyncio
+    async def test_contextmanager(self, tmpdir):
         path = tmpdir / 'test-context.db'
         dim = 10
         max_elements = 1000
@@ -222,7 +228,7 @@ class TestStore:
             store.create_index(name, 'l2', dim)
             store.init_index(name, max_elements)
             data, ids = generate_data(num_elements, dim)
-            store.add_items(name, data, ids)
+            await store.add_items(name, data, ids)
 
         assert os.path.exists(path)
 

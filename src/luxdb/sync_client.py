@@ -5,8 +5,9 @@ import socket
 from typing import Dict
 
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, IndexExistsCommand, InfoCommand, InitIndexCommand,
-                            MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
+                            GetEFCommand, GetEFConstructionCommand, GetIndexesCommand, IndexExistsCommand, InfoCommand,
+                            InitIndexCommand, MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result,
+                            SetEFCommand)
 from luxdb.connection import receive_result_sync, send_close_sync, send_command_sync
 
 
@@ -110,6 +111,11 @@ class SyncClient:
         Returns a dict with space, dim, M, ef_construction, ef, max_elements, element_count
         """
         command = InfoCommand(name=name)
+        return self.send_command(command)
+
+    def get_indexes(self) -> None:
+        """Return a list of all indexes in the db"""
+        command = GetIndexesCommand()
         return self.send_command(command)
 
     def quit(self) -> None:

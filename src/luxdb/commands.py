@@ -1,8 +1,5 @@
 """This module provides command objects that are sent from the client to the server."""
-import asyncio
-import concurrent.futures
 from enum import Enum, auto
-from functools import partial
 import logging
 
 from luxdb.exceptions import KNNBaseException, NotACommandException
@@ -42,8 +39,6 @@ class Command:
     state = CommandState.CREATED
     result = None
 
-    is_cpu_heavy = False
-
     def __init__(self, **kwargs):
         self.command_args = kwargs
 
@@ -51,15 +46,7 @@ class Command:
         """Executes the command and stores the result or error."""
         self.state = CommandState.EXECUTED
         try:
-            if self.is_cpu_heavy:
-                LOG.debug('Executing command %r in thread pool.', self)
-                loop = asyncio.get_running_loop()
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    self.result = await loop.run_in_executor(pool,
-                                                             partial(self.execute_command, store, **self.command_args))
-            else:
-                LOG.debug('Executing command %r in event loop.', self)
-                self.result = self.execute_command(store, **self.command_args)
+            self.result = await self.execute_command(store, **self.command_args)
             self.state = CommandState.SUCCEEDED
         except KNNBaseException as e:
             self.result = e
@@ -71,7 +58,7 @@ class Command:
 
         return Result(self.result, self.state)
 
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         """Commands need to implement this to return the command."""
         raise NotImplementedError('Commands need to provide this method')
 
@@ -88,87 +75,89 @@ class CreateIndexCommand(Command):
 
     For the parameters refer to the corresponding method in KNNStore.
     """
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.create_index(**kwargs)
 
 
 class InitIndexCommand(Command):
     """Init the index."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.init_index(**kwargs)
 
 
 class IndexExistsCommand(Command):
     """Check if the index exists."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.index_exists(**kwargs)
 
 
 class DeleteIndexCommand(Command):
     """Delete an index."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.delete_index(**kwargs)
 
 
 class AddItemsCommand(Command):
     """Add items to the specified index."""
-    def execute_command(self, store, **kwargs):
-        return store.add_items(**kwargs)
+    async def execute_command(self, store, **kwargs):
+        return await store.add_items(**kwargs)
 
 
 class SetEFCommand(Command):
     """Set the ef."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.set_ef(**kwargs)
 
 
 class GetEFCommand(Command):
     """Get the ef."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.get_ef(**kwargs)
 
 
 class GetEFConstructionCommand(Command):
     """get construction ef"""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.get_ef_construction(**kwargs)
 
 
 class QueryIndexCommand(Command):
     """Query the index."""
-    is_cpu_heavy = True
-
-    def execute_command(self, store, **kwargs):
-        return store.query_index(**kwargs)
+    async def execute_command(self, store, **kwargs):
+        return await store.query_index(**kwargs)
 
 
 class DeleteItemCommand(Command):
     """Delete an item from the index."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.delete_item(**kwargs)
 
 
 class ResizeIndexCommand(Command):
     """Resize the index to a new size"""
-    is_cpu_heavy = True
-
-    def execute_command(self, store, **kwargs):
-        return store.resize_index(**kwargs)
+    async def execute_command(self, store, **kwargs):
+        return await store.resize_index(**kwargs)
 
 
 class MaxElementsCommand(Command):
     """Get the current limit on the index."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.max_elements(**kwargs)
 
 
 class CountCommand(Command):
     """Get the current amount of items."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.count(**kwargs)
 
 
 class InfoCommand(Command):
     """Get information about the index."""
-    def execute_command(self, store, **kwargs):
+    async def execute_command(self, store, **kwargs):
         return store.info(**kwargs)
+
+
+class GetIndexesCommand(Command):
+    """Get list of indexes."""
+    async def execute_command(self, store, **kwargs):
+        return store.get_indexes(**kwargs)

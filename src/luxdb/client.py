@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from typing import Dict
 
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, IndexExistsCommand, InfoCommand, InitIndexCommand,
-                            MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
+                            GetEFCommand, GetEFConstructionCommand, GetIndexesCommand, IndexExistsCommand, InfoCommand,
+                            InitIndexCommand, MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result,
+                            SetEFCommand)
 from luxdb.connection import receive_result, send_close, send_command
 
 
@@ -111,6 +112,11 @@ class Client:
         Returns a dict with space, dim, M, ef_construction, ef, max_elements, element_count
         """
         command = InfoCommand(name=name)
+        return await self.send_command(command)
+
+    async def get_indexes(self) -> None:
+        """Return a list of all indexes in the db"""
+        command = GetIndexesCommand()
         return await self.send_command(command)
 
     async def quit(self) -> None:

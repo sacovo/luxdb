@@ -59,6 +59,14 @@ class TestClient:
         assert False == await client.index_exists('this-should-not-exist')
 
     @pytest.mark.asyncio
+    async def test_get_indexes(self, client):
+        await client.create_index('first-index', 'l2', 12)
+        await client.create_index('second-index', 'l2', 12)
+
+        indexes = await client.get_indexes()
+        assert len(indexes) == 2
+
+    @pytest.mark.asyncio
     async def test_single_connection(self, client):
         name = 'test-create'
         max_elements = 100
