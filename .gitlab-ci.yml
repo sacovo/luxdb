@@ -24,7 +24,6 @@ bandit-job:
   - pip install -e .
   stage: lint
   script: bandit --recursive src
-
 pylint-job:
   before_script:
   - python -V
@@ -36,7 +35,6 @@ pylint-job:
   - pip install -e .
   stage: lint
   script: pylint src/
-
 pytest-job:
   before_script:
   - python -V
@@ -47,7 +45,7 @@ pytest-job:
   - pip-sync requirements.txt dev-requirements.txt
   - pip install -e .
   stage: test
-  coverage: /^TOTAL.+?(\d+\%)$/
+  coverage: "/^TOTAL.+?(\\d+\\%)$/"
   script:
   - coverage run
   - coverage report
@@ -55,13 +53,11 @@ pytest-job:
   artifacts:
     reports:
       cobertura: coverage.xml
-
 sast:
   stage: test
   variables:
+    SAST_EXCLUDED_PATHS: spec, test, tests, tmp, venv
     SAST_BANDIT_EXCLUDED_PATHS: "*/tests/*,*/venv/*"
-
-
 docker-build:
   image: docker:latest
   stage: build
@@ -84,20 +80,20 @@ docker-build:
   - if: "$CI_COMMIT_BRANCH"
     exists:
     - Dockerfile
-
 pypi-build:
   image: python:latest
   stage: build
   script:
-    - pip install --upgrade twine build
-    - python -m build
-    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+  - pip install --upgrade twine build
+  - python -m build
+  - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine
+    upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi
+    dist/*
   only:
     refs:
-      - main
+    - main
     changes:
-      - setup.cfg
-
+    - setup.cfg
 include:
 - template: Security/Secret-Detection.gitlab-ci.yml
 - template: Security/SAST.gitlab-ci.yml
