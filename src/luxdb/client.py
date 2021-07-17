@@ -4,8 +4,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict
 
-import numpy.typing as npt
-
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
                             GetEFCommand, GetEFConstructionCommand, IndexExistsCommand, InfoCommand, InitIndexCommand,
                             MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
@@ -60,7 +58,7 @@ class Client:
         command = DeleteIndexCommand(name=name)
         return await self.send_command(command)
 
-    async def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike) -> None:
+    async def add_items(self, name: str, data, ids) -> None:
         """Add the given items to the index."""
         command = AddItemsCommand(name=name, data=data, ids=ids)
         return await self.send_command(command)
@@ -70,7 +68,7 @@ class Client:
         command = SetEFCommand(name=name, new_ef=new_ef)
         return await self.send_command(command)
 
-    async def query_index(self, name: str, vector: npt.ArrayLike, k: int) -> npt.ArrayLike:
+    async def query_index(self, name: str, vector, k: int):
         """Find the k nearest neighbors of every element in vector.
         Returns a tuple with the labels of the found neighbors and the distances.
         """

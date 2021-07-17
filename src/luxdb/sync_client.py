@@ -1,15 +1,13 @@
 """Client to connect to a database server."""
 
-import socket
 from contextlib import contextmanager
+import socket
 from typing import Dict
-
-import numpy.typing as npt
 
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
                             GetEFCommand, GetEFConstructionCommand, IndexExistsCommand, InfoCommand, InitIndexCommand,
                             MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
-from luxdb.connection import (receive_result_sync, send_close_sync, send_command_sync)
+from luxdb.connection import receive_result_sync, send_close_sync, send_command_sync
 
 
 class SyncClient:
@@ -59,7 +57,7 @@ class SyncClient:
         command = DeleteIndexCommand(name=name)
         return self.send_command(command)
 
-    def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike) -> None:
+    def add_items(self, name: str, data, ids) -> None:
         """Add the given items to the index."""
         command = AddItemsCommand(name=name, data=data, ids=ids)
         return self.send_command(command)
@@ -69,7 +67,7 @@ class SyncClient:
         command = SetEFCommand(name=name, new_ef=new_ef)
         return self.send_command(command)
 
-    def query_index(self, name: str, vector: npt.ArrayLike, k: int) -> npt.ArrayLike:
+    def query_index(self, name: str, vector, k: int):
         """Find the k nearest neighbors of every element in vector.
         Returns a tuple with the labels of the found neighbors and the distances.
         """
