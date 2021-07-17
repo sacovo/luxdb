@@ -39,6 +39,9 @@ pylint-job:
   - pip install -e .
   stage: lint
   script: pylint src/
+  only:
+    changes:
+      - src/*
 
 pytest-job:
   before_script:
