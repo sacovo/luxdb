@@ -14,7 +14,7 @@ class TestCommands:
     @pytest.mark.asyncio
     async def test_base_command(self):
         class TestCommand(Command):
-            def execute_command(self, store: KNNStore, **kwargs):
+            async def execute_command(self, store: KNNStore, **kwargs):
                 return (store, kwargs)
 
         store = KNNStore()
@@ -32,7 +32,7 @@ class TestCommands:
         assert test_command.result[1] == kwargs
 
         with pytest.raises(NotImplementedError):
-            Command().execute_command(None)
+            await Command().execute_command(None)
 
     @pytest.mark.asyncio
     async def test_execute_non_command(self):
@@ -43,7 +43,7 @@ class TestCommands:
     @pytest.mark.asyncio
     async def test_base_failing(self):
         class TestFailingCommand(Command):
-            def execute_command(self, store: KNNStore, **kwargs):
+            async def execute_command(self, store: KNNStore, **kwargs):
                 raise KNNBaseException()
 
         kwargs = {'name': 'test_base', 'a': 1, 'b': 3}
@@ -56,7 +56,7 @@ class TestCommands:
         assert isinstance(command.result, KNNBaseException)
 
         class TestFailingUnknownCommand(Command):
-            def execute_command(self, store: KNNStore, **kwargs):
+            async def execute_command(self, store: KNNStore, **kwargs):
                 raise Exception()
 
         command = TestFailingUnknownCommand(**kwargs)

@@ -4,6 +4,9 @@ It wraps around https://github.com/nmslib/hnswlib and provides thread safe acces
 
 The Store can also be saved and loaded onto the disk.
 """
+import asyncio
+from functools import partial
+import concurrent.futures
 import logging
 from contextlib import contextmanager
 from typing import Dict
@@ -125,12 +128,13 @@ class KNNStore(persistent.Persistent):
             del self.root['indexes'][name]
             LOG.info('Deleted index %s', name)
 
-    def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike):
+    async def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike):
         """Add the items with the ids to the index."""
         LOG.debug('Adding items to %s', name)
-        with self.transaction:
-            index = self.get_index(name)
-            index.add_items(data, ids)
+        loop = asyncio.get_running_loop()
+        index = self.get_index(name)
+        with self.transaction, concurrent.futures.ThreadPoolExecutor() as pool:
+            await loop.run_in_executor(pool, partial(index.add_items, data, ids))
 
         LOG.debug('Added items to %s', name)
 
@@ -149,10 +153,12 @@ class KNNStore(persistent.Persistent):
         """Return the value of construction_ef"""
         return self.get_index(name).ef_construction
 
-    def query_index(self, name: str, vector: npt.ArrayLike, k: int = 1) -> npt.NDArray:
+    async def query_index(self, name: str, vector: npt.ArrayLike, k: int = 1) -> npt.NDArray:
         """Return the k nearest vectors to the given vector"""
+        loop = asyncio.get_running_loop()
         index = self.get_index(name)
-        return index.knn_query(vector, k)
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return await loop.run_in_executor(pool, partial(index.knn_query, vector, k))
 
     def delete_item(self, name: str, label: int) -> None:
         """This does just remove the item from search results, it's still in the index."""
@@ -161,11 +167,13 @@ class KNNStore(persistent.Persistent):
 
             index.mark_deleted(label)
 
-    def resize_index(self, name: str, new_size: int) -> None:
+    async def resize_index(self, name: str, new_size: int) -> None:
         """Resize the index to accommodate more or less items."""
-        with self.transaction:
-            index = self.get_index(name)
-            index.resize_index(new_size)
+        LOG.debug('Resizing the index %s to size %d', name, new_size)
+        loop = asyncio.get_running_loop()
+        index = self.get_index(name)
+        with self.transaction, concurrent.futures.ThreadPoolExecutor() as pool:
+            await loop.run_in_executor(pool, partial(index.resize_index, new_size))
 
     def max_elements(self, name: str) -> int:
         """Return the maximum number of elements that can be stored in the index."""
@@ -187,6 +195,10 @@ class KNNStore(persistent.Persistent):
             'element_count': index.get_current_count(),
             'ef': index.ef,
         }
+
+    def get_indexes(self):
+        """Returns all indexes in the database."""
+        return list(self.root['indexes'].keys())
 
 
 @contextmanager

@@ -52,6 +52,13 @@ class TestClient:
     def test_client(self, client):
         assert False == client.index_exists('this-should-not-exist')
 
+    def test_get_indexes(self, client):
+        client.create_index('first-index', 'l2', 12)
+        client.create_index('second-index', 'l2', 12)
+
+        indexes = client.get_indexes()
+        assert len(indexes) == 2
+
     def test_single_connection(self, client):
         name = 'test-create'
         max_elements = 100
