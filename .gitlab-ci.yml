@@ -26,7 +26,7 @@ bandit-job:
   script: bandit --recursive src
   only:
     changes:
-      - src/*
+      - src/**
 
 pylint-job:
   before_script:
@@ -41,7 +41,7 @@ pylint-job:
   script: pylint src/
   only:
     changes:
-      - src/*
+      - src/**
 
 pytest-job:
   before_script:
@@ -92,7 +92,7 @@ docker-build:
     - Dockerfile
     changes:
       - Dockerfile
-      - src/*
+      - src/**
       - luxdb-server
 
 pypi-build:
