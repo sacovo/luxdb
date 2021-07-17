@@ -35,6 +35,8 @@ Or directly (after installing the dependencies in requirements.txt)
 
 The docker container stores the database in `/data/` so you can mount something there in order to store data.
 
+Look into the [snippets](https://gitlab.com/sacovo/luxdb/-/snippets) to see some example configurations and code snippets that show how to use the client.
+
 You can then use the client to connect to the server and add or retrieve data.
 
 ```python
