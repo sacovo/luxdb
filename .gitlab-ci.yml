@@ -91,6 +91,7 @@ pypi-build:
   only:
     refs:
       - main
+      - packaging
 
 include:
 - template: Security/Secret-Detection.gitlab-ci.yml
