@@ -1,13 +1,21 @@
 """This module provides a simple tcp server to connect to the database."""
 import argparse
 import asyncio
+from functools import partial
 import logging
+import signal
 import socket
 
 from luxdb.connection import receive_command, send_result
 from luxdb.knn_store import KNNStore, open_store
 
 LOG = logging.getLogger('server')
+
+
+def shutdown(server, signum):
+    """Gracefully shut the server down."""
+    LOG.info('%s, shutting down', signal.strsignal(signum))
+    server.shutdown()
 
 
 class Server:
@@ -48,6 +56,10 @@ class Server:
             self.host = host
             self.port = int(port)
 
+    def shutdown(self):
+        """Gracefully terminate the database server."""
+        self.server.close()
+
     async def start(self, callback=None):
         """Start the server and process incoming connections.
 
@@ -58,39 +70,41 @@ class Server:
             await self.create_server()
 
         async with self.server:
+            loop = asyncio.get_running_loop()
             if callback is not None:
-                asyncio.get_running_loop().call_soon(callback)
-            await self.server.serve_forever()
+                loop.call_soon(callback)
+
+            await self.server.start_serving()
+            await self.server.wait_closed()
 
 
 async def serve(args: dict):
     """Main method for the server thread."""
 
     with open_store(args.path) as store:
+        loop = asyncio.get_running_loop()
         server = Server(host=args.host, port=args.port, store=store)
-        try:
-            await server.start()
-        except KeyboardInterrupt:
-            print('Shutting down server..')
+
+        for signum in [signal.SIGTERM, signal.SIGINT]:
+            loop.add_signal_handler(signum, partial(shutdown, server, signum))
+
+        await server.start()
 
 
 def main():
     """Main method for the server."""
-    try:
-        parser = argparse.ArgumentParser(description='Multidimensional vector database (server).')
+    parser = argparse.ArgumentParser(description='Multidimensional vector database (server).')
 
-        parser.add_argument('--host', type=str, default='127.0.0.1', help='Host where the server should listen.')
-        parser.add_argument('--port', type=int, default=None, help='Port to listen on.')
-        parser.add_argument(
-            '-log',
-            '--loglevel',
-            default='warning',
-            help='Provide logging level. Example --loglevel debug, default=warning',
-        )
-        parser.add_argument('path', type=str, help='Path where the database is stored or should be stored.')
-        args = parser.parse_args()
-        logging.basicConfig(level=args.loglevel.upper())
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host where the server should listen.')
+    parser.add_argument('--port', type=int, default=None, help='Port to listen on.')
+    parser.add_argument(
+        '-log',
+        '--loglevel',
+        default='warning',
+        help='Provide logging level. Example --loglevel debug, default=warning',
+    )
+    parser.add_argument('path', type=str, help='Path where the database is stored or should be stored.')
+    args = parser.parse_args()
+    logging.basicConfig(level=args.loglevel.upper())
 
-        asyncio.run(serve(args), debug=args.loglevel.upper() == 'DEBUG')
-    except KeyboardInterrupt:
-        print('Shutting down server...')
+    return asyncio.run(serve(args), debug=args.loglevel.upper() == 'DEBUG')
