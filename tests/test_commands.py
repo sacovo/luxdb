@@ -1,13 +1,24 @@
 import pickle
+import secrets
 
 import numpy as np
 import pytest
 
-from luxdb.commands import (AddItemsCommand, Command, CommandState, CreateIndexCommand, InitIndexCommand,
-                            execute_command)
+from luxdb.commands import (AddItemsCommand, Command, CommandState, CreateIndexCommand, GetIdsCommand, GetItemsCommand,
+                            InitIndexCommand, execute_command)
 from luxdb.exceptions import KNNBaseException, NotACommandException
 from luxdb.knn_store import KNNStore
 from tests import generate_data
+
+
+@pytest.fixture
+def store():
+    return KNNStore()
+
+
+@pytest.fixture
+def name():
+    return secrets.token_hex()
 
 
 class TestCommands:
@@ -93,6 +104,28 @@ class TestCommands:
 
         assert command.state == CommandState.SUCCEEDED
         assert store.count(name) == num_elements
+
+    @pytest.mark.asyncio
+    async def test_get_items_command(self, store: KNNStore, name):
+        store.create_index(name, 'l2', 12)
+        store.init_index(name, 10000)
+        data, ids = generate_data(500, 12)
+        await execute_command(AddItemsCommand(name=name, data=data, ids=ids), store)
+
+        get_items_command = GetItemsCommand(name=name, ids=ids)
+
+        result = await execute_command(get_items_command, store)
+
+        assert get_items_command.state == CommandState.SUCCEEDED
+        assert np.array_equal(result.data, data)
+
+        get_items_command = GetItemsCommand(name=name, ids=ids[:20])
+
+        result = await execute_command(get_items_command, store)
+        assert np.array_equal(result.data, data[:20])
+
+        result = await execute_command(GetIdsCommand(name=name), store)
+        assert np.array_equal(np.sort(result.data), ids)
 
     @pytest.mark.asyncio
     def test_serialization(self):

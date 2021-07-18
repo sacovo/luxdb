@@ -168,3 +168,13 @@ class Index(persistent.Persistent):
         """Get the current number of elements in the index."""
         with self.lock.read():
             return self.index.get_current_count()
+
+    def get_items(self, ids):
+        """Return the array of vectors (N*dim) with the given ids"""
+        with self.lock.read():
+            return self.index.get_items(ids)
+
+    def get_ids(self):
+        """Return the ids in the index"""
+        with self.lock.read():
+            return self.index.get_ids_list()

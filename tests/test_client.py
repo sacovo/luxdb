@@ -5,6 +5,8 @@ import threading
 
 import pytest
 
+import numpy as np
+
 from luxdb.client import Client, connect
 from luxdb.knn_store import IndexAlreadyExistsException, open_store
 from luxdb.server import Server
@@ -96,6 +98,12 @@ class TestClient:
         await client.add_items(name, data, ids)
 
         assert await client.count(name) == 20
+
+        all_ids = await client.get_ids(name)
+        assert np.array_equal(np.sort(all_ids), ids)
+
+        items = await client.get_items(name, ids[:5])
+        assert np.array_equal(data[:5], items)
 
         labels, distances = await client.query_index(name, data[:5], k=1)
 

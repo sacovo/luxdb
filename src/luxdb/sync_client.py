@@ -2,12 +2,12 @@
 
 from contextlib import contextmanager
 import socket
-from typing import Dict
+from typing import Dict, List
 
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, GetIndexesCommand, IndexExistsCommand, InfoCommand,
-                            InitIndexCommand, MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result,
-                            SetEFCommand)
+                            GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand, GetItemsCommand,
+                            IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand, QueryIndexCommand,
+                            ResizeIndexCommand, Result, SetEFCommand)
 from luxdb.connection import receive_result_sync, send_close_sync, send_command_sync
 
 
@@ -121,6 +121,16 @@ class SyncClient:
     def quit(self) -> None:
         """Quit the connection and inform the server about it."""
         send_close_sync(self.socket)
+
+    def get_items(self, name: str, ids: List[int]):
+        """Return array with the items with the id"""
+        command = GetItemsCommand(name=name, ids=ids)
+        return self.send_command(command)
+
+    def get_ids(self, name: str):
+        """Return all ids in the index."""
+        command = GetIdsCommand(name=name)
+        return self.send_command(command)
 
 
 @contextmanager

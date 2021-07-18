@@ -161,3 +161,15 @@ class GetIndexesCommand(Command):
     """Get list of indexes."""
     async def execute_command(self, store, **kwargs):
         return store.get_indexes(**kwargs)
+
+
+class GetItemsCommand(Command):
+    """Get items with specified ids"""
+    async def execute_command(self, store, **kwargs):
+        return store.get_items(**kwargs)
+
+
+class GetIdsCommand(Command):
+    """Get ids in index"""
+    async def execute_command(self, store, **kwargs):
+        return store.get_ids(**kwargs)

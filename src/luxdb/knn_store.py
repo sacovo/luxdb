@@ -196,6 +196,14 @@ class KNNStore(persistent.Persistent):
             'ef': index.ef,
         }
 
+    def get_items(self, name: str, ids):
+        """get vectors with given labels"""
+        return self.get_index(name).get_items(ids)
+
+    def get_ids(self, name: str):
+        """get all ids in the index"""
+        return self.get_index(name).get_ids()
+
     def get_indexes(self):
         """Returns all indexes in the database."""
         return list(self.root['indexes'].keys())

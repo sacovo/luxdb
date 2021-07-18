@@ -2,12 +2,12 @@
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Dict
+from typing import Dict, List
 
 from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, GetIndexesCommand, IndexExistsCommand, InfoCommand,
-                            InitIndexCommand, MaxElementsCommand, QueryIndexCommand, ResizeIndexCommand, Result,
-                            SetEFCommand)
+                            GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand, GetItemsCommand,
+                            IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand, QueryIndexCommand,
+                            ResizeIndexCommand, Result, SetEFCommand)
 from luxdb.connection import receive_result, send_close, send_command
 
 
@@ -117,6 +117,16 @@ class Client:
     async def get_indexes(self) -> None:
         """Return a list of all indexes in the db"""
         command = GetIndexesCommand()
+        return await self.send_command(command)
+
+    async def get_items(self, name: str, ids: List[int]):
+        """Return array with the items with the id"""
+        command = GetItemsCommand(name=name, ids=ids)
+        return await self.send_command(command)
+
+    async def get_ids(self, name: str):
+        """Return all ids in the index."""
+        command = GetIdsCommand(name=name)
         return await self.send_command(command)
 
     async def quit(self) -> None:
