@@ -58,6 +58,7 @@ sast:
   variables:
     SAST_EXCLUDED_PATHS: spec, test, tests, tmp, venv
     SAST_BANDIT_EXCLUDED_PATHS: "*/tests/*,*/venv/*"
+
 docker-build:
   image: docker:latest
   stage: build
@@ -76,10 +77,7 @@ docker-build:
     fi
   - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
   - docker push "$CI_REGISTRY_IMAGE${tag}"
-  rules:
-  - if: "$CI_COMMIT_BRANCH"
-    exists:
-    - Dockerfile
+
 pypi-build:
   image: python:latest
   stage: build
@@ -91,9 +89,8 @@ pypi-build:
     dist/*
   only:
     refs:
-    - main
-    changes:
-    - setup.cfg
+    - tags
+
 include:
 - template: Security/Secret-Detection.gitlab-ci.yml
 - template: Security/SAST.gitlab-ci.yml
