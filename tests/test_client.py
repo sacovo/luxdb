@@ -54,7 +54,7 @@ class TestClient:
     async def test_db_empty(self, start_server):
         async with connect('127.0.0.1', start_server) as client:
             result = await client.index_exists('this-should-not-exist')
-            assert result == False
+        assert result == False
 
     @pytest.mark.asyncio
     async def test_client(self, client):

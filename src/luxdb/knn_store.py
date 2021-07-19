@@ -8,7 +8,7 @@ import asyncio
 from functools import partial
 import concurrent.futures
 import logging
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import Dict
 
 import hnswlib
@@ -62,6 +62,24 @@ class KNNStore(persistent.Persistent):
         except KeyError as e:
             raise IndexDoesNotExistException(name) from e
 
+    @asynccontextmanager
+    async def _index_for_write(self, name: str):
+        index: Index = self.get_index(name)
+        await index.lock.acquire_write()
+        try:
+            yield index
+        finally:
+            index.lock.release_write()
+
+    @asynccontextmanager
+    async def _index_for_read(self, name: str):
+        index: Index = self.get_index(name)
+        await index.lock.acquire_read()
+        try:
+            yield index
+        finally:
+            await index.lock.release_read()
+
     def load_database(self):
         """Initialize the database from the filesystem"""
         LOG.debug('Loading database.')
@@ -86,23 +104,23 @@ class KNNStore(persistent.Persistent):
 
     def create_index(self, name: str, space: str, dim: int) -> bool:
         """Create a new index with the given name and parameters."""
-        with self.transaction:
-            if space not in KNNStore.ALLOWED_SPACES:
-                raise UnknownSpaceException(space)
+        if space not in KNNStore.ALLOWED_SPACES:
+            raise UnknownSpaceException(space)
 
-            LOG.debug('Creating new index: %s, space: %s, dim: %d', name, space, dim)
-            if name in self.root['indexes']:
-                LOG.error('Index with name %s already exists', name)
-                raise IndexAlreadyExistsException(name)
+        LOG.debug('Creating new index: %s, space: %s, dim: %d', name, space, dim)
+        if name in self.root['indexes']:
+            LOG.error('Index with name %s already exists', name)
+            raise IndexAlreadyExistsException(name)
 
-            index = hnswlib.Index(space=space, dim=dim)
+        index = hnswlib.Index(space=space, dim=dim)
 
-            self.root['indexes'][name] = Index(index)
+        self.root['indexes'][name] = Index(index)
+        self.transaction.commit()
 
-            LOG.debug('New index created: %s', name)
-            return True
+        LOG.debug('New index created: %s', name)
+        return True
 
-    def init_index(self, name: str, max_elements: int, ef_construction: int = 200, M: int = 16) -> None:
+    async def init_index(self, name: str, max_elements: int, ef_construction: int = 200, M: int = 16) -> None:
         """Init the index with the given parameters.
 
         More information about the parameters is available here:
@@ -111,98 +129,109 @@ class KNNStore(persistent.Persistent):
         LOG.debug('Initializing index %s with max_elements: %d, ef_construction: %d, M: %d', name, max_elements,
                   ef_construction, M)
 
-        with self.transaction:
-            index = self.get_index(name)
+        async with self._index_for_write(name) as index:
             index.init_index(
                 max_elements=max_elements,
                 ef_construction=ef_construction,
                 M=M,
             )
+            self.transaction.commit()
 
         LOG.info('Initialized index %s', name)
 
     def delete_index(self, name: str) -> None:
         """Deletes the index from the store."""
         LOG.debug('Deleting index %s', name)
-        with self.transaction:
-            del self.root['indexes'][name]
-            LOG.info('Deleted index %s', name)
+        del self.root['indexes'][name]
+        self.transaction.commit()
+        LOG.info('Deleted index %s', name)
 
     async def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike):
         """Add the items with the ids to the index."""
-        LOG.debug('Adding items to %s', name)
+        LOG.debug('Adding items to %s', name, stack_info=True)
         loop = asyncio.get_running_loop()
-        index = self.get_index(name)
-        with self.transaction, concurrent.futures.ThreadPoolExecutor() as pool:
-            await loop.run_in_executor(pool, partial(index.add_items, data, ids))
+        async with self._index_for_write(name) as index:
+            LOG.debug('Got write lock for index %s', name, stack_info=True)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                await loop.run_in_executor(pool, partial(index.add_items, data, ids))
+                LOG.debug('Added items, closing transaction', stack_info=True)
+                self.transaction.commit()
+            LOG.debug('Committed, releasing lock.')
 
         LOG.debug('Added items to %s', name)
 
-    def set_ef(self, name: str, new_ef: int):
+    async def set_ef(self, name: str, new_ef: int):
         """Sets the ef value on the index."""
-        with self.transaction:
-            index = self.get_index(name)
-
+        async with self._index_for_write(name) as index:
             index.set_ef(new_ef)
+            self.transaction.commit()
 
-    def get_ef(self, name: str) -> int:
+    async def get_ef(self, name: str) -> int:
         """Return the current value of ef"""
-        return self.get_index(name).ef
+        async with self._index_for_read(name) as index:
+            return index.ef
 
-    def get_ef_construction(self, name: str) -> int:
+    async def get_ef_construction(self, name: str) -> int:
         """Return the value of construction_ef"""
-        return self.get_index(name).ef_construction
+        async with self._index_for_read(name) as index:
+            return index.ef_construction
 
     async def query_index(self, name: str, vector: npt.ArrayLike, k: int = 1) -> npt.NDArray:
         """Return the k nearest vectors to the given vector"""
         loop = asyncio.get_running_loop()
         index = self.get_index(name)
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            return await loop.run_in_executor(pool, partial(index.knn_query, vector, k))
+        async with self._index_for_read(name) as index:
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return await loop.run_in_executor(pool, partial(index.knn_query, vector, k))
 
-    def delete_item(self, name: str, label: int) -> None:
+    async def delete_item(self, name: str, label: int) -> None:
         """This does just remove the item from search results, it's still in the index."""
-        with self.transaction:
-            index = self.get_index(name)
-
+        async with self._index_for_write(name) as index:
             index.mark_deleted(label)
+            self.transaction.commit()
 
     async def resize_index(self, name: str, new_size: int) -> None:
         """Resize the index to accommodate more or less items."""
         LOG.debug('Resizing the index %s to size %d', name, new_size)
         loop = asyncio.get_running_loop()
-        index = self.get_index(name)
-        with self.transaction, concurrent.futures.ThreadPoolExecutor() as pool:
-            await loop.run_in_executor(pool, partial(index.resize_index, new_size))
+        async with self._index_for_write(name) as index:
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                await loop.run_in_executor(pool, partial(index.resize_index, new_size))
+                self.transaction.commit()
 
-    def max_elements(self, name: str) -> int:
+    async def max_elements(self, name: str) -> int:
         """Return the maximum number of elements that can be stored in the index."""
-        return self.get_index(name).get_max_elements()
+        async with self._index_for_read(name) as index:
+            return index.get_max_elements()
 
-    def count(self, name: str) -> int:
+    async def count(self, name: str) -> int:
         """Return the current amount of elements in the index."""
-        return self.get_index(name).get_current_count()
+        async with self._index_for_read(name) as index:
+            return index.get_current_count()
 
-    def info(self, name: str) -> Dict:
+    async def info(self, name: str) -> Dict:
         """Get information about the index."""
         index = self.get_index(name)
-        return {
-            'space': index.space,
-            'dim': index.dim,
-            'M': index.M,
-            'ef_construction': index.ef_construction,
-            'max_elements': index.get_max_elements(),
-            'element_count': index.get_current_count(),
-            'ef': index.ef,
-        }
+        async with self._index_for_read(name) as index:
+            return {
+                'space': index.space,
+                'dim': index.dim,
+                'M': index.M,
+                'ef_construction': index.ef_construction,
+                'max_elements': index.get_max_elements(),
+                'element_count': index.get_current_count(),
+                'ef': index.ef,
+            }
 
-    def get_items(self, name: str, ids):
+    async def get_items(self, name: str, ids):
         """get vectors with given labels"""
-        return self.get_index(name).get_items(ids)
+        async with self._index_for_read(name) as index:
+            return index.get_items(ids)
 
-    def get_ids(self, name: str):
+    async def get_ids(self, name: str):
         """get all ids in the index"""
-        return self.get_index(name).get_ids()
+        async with self._index_for_read(name) as index:
+            return index.get_ids()
 
     def get_indexes(self):
         """Returns all indexes in the database."""

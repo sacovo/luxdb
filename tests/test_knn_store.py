@@ -13,7 +13,8 @@ from tests import generate_data
 
 class TestStore:
     """Test store functionality"""
-    def test_create_index(self):
+    @pytest.mark.asyncio
+    async def test_create_index(self):
         store = KNNStore()
 
         store.create_index('test', 'l2', 12)
@@ -32,11 +33,12 @@ class TestStore:
 
         assert store2.index_exists('test')
 
-    def test_index_does_not_exist(self):
+    @pytest.mark.asyncio
+    async def test_index_does_not_exist(self):
         store = KNNStore()
 
         with pytest.raises(IndexDoesNotExistException):
-            store.info('this-does-not-exist')
+            await store.info('this-does-not-exist')
 
     def test_remove_index(self):
         store = KNNStore()
@@ -47,16 +49,17 @@ class TestStore:
 
         assert store.index_exists(name) == False
 
-    def test_set_ef(self):
+    @pytest.mark.asyncio
+    async def test_set_ef(self):
         store = KNNStore()
         name = 'test-set-ef'
 
         store.create_index(name, 'l2', 12)
-        store.init_index(name, 120)
+        await store.init_index(name, 120)
 
-        store.set_ef(name, 210)
+        await store.set_ef(name, 210)
 
-        assert store.get_ef(name) == 210
+        assert await store.get_ef(name) == 210
 
     def test_unknown_space(self):
         store = KNNStore()
@@ -66,17 +69,18 @@ class TestStore:
         with pytest.raises(UnknownSpaceException):
             store.create_index('test-unknown', space, 10)
 
-    def test_init_index(self):
+    @pytest.mark.asyncio
+    async def test_init_index(self):
         store = KNNStore()
 
         max_elements = 1000
         dimension = 12
         name = 'test-1'
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
-        assert store.max_elements(name) == max_elements
-        assert store.count(name) == 0
+        assert await store.max_elements(name) == max_elements
+        assert await store.count(name) == 0
 
         max_elements = 2000
         ef_construction = 30
@@ -84,10 +88,10 @@ class TestStore:
         name = 'test-2'
 
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements, ef_construction, M)
-        assert store.max_elements(name) == max_elements
-        assert store.count(name) == 0
-        assert store.get_ef_construction(name) == ef_construction
+        await store.init_index(name, max_elements, ef_construction, M)
+        assert await store.max_elements(name) == max_elements
+        assert await store.count(name) == 0
+        assert await store.get_ef_construction(name) == ef_construction
 
     @pytest.mark.asyncio
     async def test_resize_index(self):
@@ -96,13 +100,13 @@ class TestStore:
         dimension = 12
         max_elements = 1000
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
         await store.resize_index(name, 500)
 
-        assert store.max_elements(name) == 500
+        assert await store.max_elements(name) == 500
         await store.resize_index(name, 1200)
-        assert store.max_elements(name) == 1200
+        assert await store.max_elements(name) == 1200
 
     def test_create_twice_raises(self):
         store = KNNStore()
@@ -127,7 +131,7 @@ class TestStore:
         name = 'test-adding'
 
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
         num_elements = 800
 
@@ -135,7 +139,7 @@ class TestStore:
 
         await store.add_items(name, data, ids)
 
-        assert store.count(name) == num_elements
+        assert await store.count(name) == num_elements
 
     @pytest.mark.asyncio
     async def test_query(self):
@@ -146,7 +150,7 @@ class TestStore:
         name = 'test-query'
 
         store.create_index(name, 'cosine', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
         num_elements = 500
 
@@ -176,12 +180,12 @@ class TestStore:
 
         name = 'test-delete'
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
         data, ids = generate_data(10, dimension)
 
         await store.add_items(name, data, ids)
-        store.delete_item(name, ids[0])
+        await store.delete_item(name, ids[0])
 
         labels, _ = await store.query_index(name, data, k=2)
 
@@ -198,7 +202,7 @@ class TestStore:
         dimension = 100
         max_elements = 1000
         store.create_index(name, 'l2', dimension)
-        store.init_index(name, max_elements)
+        await store.init_index(name, max_elements)
 
         num_elements = 500
 
@@ -214,7 +218,7 @@ class TestStore:
         store.load_database()
 
         assert store.index_exists(name)
-        assert store.count(name) == num_elements
+        assert await store.count(name) == num_elements
 
     @pytest.mark.asyncio
     async def test_contextmanager(self, tmpdir):
@@ -224,9 +228,11 @@ class TestStore:
         name = 'test-context'
         num_elements = 500
 
+        assert not os.path.exists(path)
+
         with open_store(path) as store:
             store.create_index(name, 'l2', dim)
-            store.init_index(name, max_elements)
+            await store.init_index(name, max_elements)
             data, ids = generate_data(num_elements, dim)
             await store.add_items(name, data, ids)
 
@@ -234,5 +240,5 @@ class TestStore:
 
         with open_store(path) as store:
             assert store.index_exists(name)
-            assert store.count(name) == num_elements
-            assert store.max_elements(name) == max_elements
+            assert await store.count(name) == num_elements
+            assert await store.max_elements(name) == max_elements

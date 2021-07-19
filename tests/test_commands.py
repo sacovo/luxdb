@@ -49,7 +49,7 @@ class TestCommands:
     async def test_execute_non_command(self):
         store = KNNStore()
         with pytest.raises(NotACommandException):
-            execute_command(object(), store)
+            await execute_command(object(), store)
 
     @pytest.mark.asyncio
     async def test_base_failing(self):
@@ -103,12 +103,12 @@ class TestCommands:
         await execute_command(command, store)
 
         assert command.state == CommandState.SUCCEEDED
-        assert store.count(name) == num_elements
+        assert await store.count(name) == num_elements
 
     @pytest.mark.asyncio
     async def test_get_items_command(self, store: KNNStore, name):
         store.create_index(name, 'l2', 12)
-        store.init_index(name, 10000)
+        await store.init_index(name, 10000)
         data, ids = generate_data(500, 12)
         await execute_command(AddItemsCommand(name=name, data=data, ids=ids), store)
 

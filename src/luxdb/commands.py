@@ -63,10 +63,10 @@ class Command:
         raise NotImplementedError('Commands need to provide this method')
 
 
-def execute_command(command: Command, store):
+async def execute_command(command: Command, store):
     """Checks if the command is an instance of command and if so execute it."""
     if isinstance(command, Command):
-        return command.execute(store)
+        return await command.execute(store)
     raise NotACommandException('Command is not instance of command!')
 
 
@@ -82,7 +82,7 @@ class CreateIndexCommand(Command):
 class InitIndexCommand(Command):
     """Init the index."""
     async def execute_command(self, store, **kwargs):
-        return store.init_index(**kwargs)
+        return await store.init_index(**kwargs)
 
 
 class IndexExistsCommand(Command):
@@ -106,19 +106,19 @@ class AddItemsCommand(Command):
 class SetEFCommand(Command):
     """Set the ef."""
     async def execute_command(self, store, **kwargs):
-        return store.set_ef(**kwargs)
+        return await store.set_ef(**kwargs)
 
 
 class GetEFCommand(Command):
     """Get the ef."""
     async def execute_command(self, store, **kwargs):
-        return store.get_ef(**kwargs)
+        return await store.get_ef(**kwargs)
 
 
 class GetEFConstructionCommand(Command):
     """get construction ef"""
     async def execute_command(self, store, **kwargs):
-        return store.get_ef_construction(**kwargs)
+        return await store.get_ef_construction(**kwargs)
 
 
 class QueryIndexCommand(Command):
@@ -130,7 +130,7 @@ class QueryIndexCommand(Command):
 class DeleteItemCommand(Command):
     """Delete an item from the index."""
     async def execute_command(self, store, **kwargs):
-        return store.delete_item(**kwargs)
+        return await store.delete_item(**kwargs)
 
 
 class ResizeIndexCommand(Command):
@@ -142,19 +142,19 @@ class ResizeIndexCommand(Command):
 class MaxElementsCommand(Command):
     """Get the current limit on the index."""
     async def execute_command(self, store, **kwargs):
-        return store.max_elements(**kwargs)
+        return await store.max_elements(**kwargs)
 
 
 class CountCommand(Command):
     """Get the current amount of items."""
     async def execute_command(self, store, **kwargs):
-        return store.count(**kwargs)
+        return await store.count(**kwargs)
 
 
 class InfoCommand(Command):
     """Get information about the index."""
     async def execute_command(self, store, **kwargs):
-        return store.info(**kwargs)
+        return await store.info(**kwargs)
 
 
 class GetIndexesCommand(Command):
@@ -166,10 +166,10 @@ class GetIndexesCommand(Command):
 class GetItemsCommand(Command):
     """Get items with specified ids"""
     async def execute_command(self, store, **kwargs):
-        return store.get_items(**kwargs)
+        return await store.get_items(**kwargs)
 
 
 class GetIdsCommand(Command):
     """Get ids in index"""
     async def execute_command(self, store, **kwargs):
-        return store.get_ids(**kwargs)
+        return await store.get_ids(**kwargs)
