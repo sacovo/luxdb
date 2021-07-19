@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.4] - 2021-07-19
+### Improved
+- Store uses async lock to allow concurrent operations
+- Commands are now all async so locking read/write access does not block event loop
+- Transactions shouldn't lead to segfaults
+- Added numpy to install dependencies, otherwise result of queries cannot be unpickled
+- Server listens to sigint and segterm and does a graceful shutdown
+### Added
+- Added commands to get ids in an index and to query elements based on id
+
 ## [0.0.3] - 2021-07-17
 ### Improved
 - Adding elements to an index does not block async event loop
