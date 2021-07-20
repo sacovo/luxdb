@@ -1,4 +1,5 @@
 import asyncio
+import secrets
 import socket
 import threading
 
@@ -11,10 +12,10 @@ from luxdb.sync_client import SyncClient, connect
 from tests import generate_data
 
 
-def server_thread(host, port, path, barrier):
+def server_thread(host, port, secret, path, barrier):
 
     with open_store(path) as store:
-        server = Server(host, port=port, store=store)
+        server = Server(host, port=port, store=store, secret=secret)
         loop = asyncio.new_event_loop()
         loop.create_task(server.start(callback=barrier.wait))
         loop.run_forever()
@@ -22,31 +23,34 @@ def server_thread(host, port, path, barrier):
 
 @pytest.fixture
 def start_server(tmpdir, unused_tcp_port):
+
+    secret = secrets.token_hex()
     barrier = threading.Barrier(2, timeout=1)
-    thread = threading.Thread(target=server_thread, args=('127.0.0.1', unused_tcp_port, tmpdir / 'store.db', barrier))
+    thread = threading.Thread(target=server_thread,
+                              args=('127.0.0.1', unused_tcp_port, secret, tmpdir / 'store.db', barrier))
 
     thread.daemon = True
     thread.start()
     barrier.wait()  # Wait til the server is actually listening
-    yield unused_tcp_port
+    yield unused_tcp_port, secret
 
 
 @pytest.fixture
 def client(start_server):
-    with connect('127.0.0.1', start_server) as client:
+    with connect('127.0.0.1', *start_server) as client:
         yield client
 
 
 class TestClient:
     def test_connect(self, start_server):
-        client = SyncClient('127.0.0.1', start_server)
+        client = SyncClient('127.0.0.1', *start_server)
         assert client.socket is None
 
         client.connect()
         assert client.socket is not None and isinstance(client.socket, socket.socket)
 
     def test_db_empty(self, start_server):
-        with connect('127.0.0.1', start_server) as client:
+        with connect('127.0.0.1', *start_server) as client:
             result = client.index_exists('this-should-not-exist')
             assert result == False
 
@@ -59,6 +63,38 @@ class TestClient:
 
         indexes = client.get_indexes()
         assert len(indexes) == 2
+
+    def test_add_too_much(self, client):
+        name = 'too-much'
+
+        client.create_index(name, 'l2', 12)
+        client.init_index(name, 1000)
+
+        data, ids = generate_data(2000, 12)
+
+        with pytest.raises(RuntimeError):
+            client.add_items(name, data, ids)
+        client.resize_index(name, 2000)
+        client.add_items(name, data, ids)
+        assert client.count(name) == 2000
+
+    def test_add_wrong_dimension(self, client):
+        name = 'wrong-dimension'
+        dim = 12
+        client.create_index(name, 'l2', dim)
+        client.init_index(name, 1000)
+
+        data, ids = generate_data(500, dim + 4)
+        with pytest.raises(RuntimeError):
+            client.add_items(name, data, ids)
+
+    def test_init_twice(self, client):
+        name = 'init-twice'
+        client.create_index(name, 'l2', 12)
+        client.init_index(name, 1000)
+
+        with pytest.raises(RuntimeError):
+            client.init_index(name, 1000)
 
     def test_single_connection(self, client):
         name = 'test-create'

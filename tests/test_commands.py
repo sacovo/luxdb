@@ -106,6 +106,30 @@ class TestCommands:
         assert await store.count(name) == num_elements
 
     @pytest.mark.asyncio
+    async def test_add_wrong_dimension(self, store, name):
+        dim = 12
+        num_elements = 50
+        await execute_command(CreateIndexCommand(name=name, space='l2', dim=dim), store)
+        await execute_command(InitIndexCommand(name=name, max_elements=100), store)
+
+        data, ids = generate_data(num_elements, dim + 4)
+        command = AddItemsCommand(name=name, data=data, ids=ids)
+
+        with pytest.raises(RuntimeError):
+            result = await execute_command(command, store)
+            result.raise_error()
+
+    @pytest.mark.asyncio
+    async def test_init_twice(self, store, name):
+        store.create_index(name, 'l2', 12)
+        command = InitIndexCommand(name=name, max_elements=1000)
+        await execute_command(command, store)
+
+        with pytest.raises(RuntimeError):
+            result = await execute_command(command, store)
+            result.get_value()
+
+    @pytest.mark.asyncio
     async def test_get_items_command(self, store: KNNStore, name):
         store.create_index(name, 'l2', 12)
         await store.init_index(name, 10000)

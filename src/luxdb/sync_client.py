@@ -1,32 +1,43 @@
 """Client to connect to a database server."""
 
-from contextlib import contextmanager
+import hmac
 import socket
+from contextlib import contextmanager
 from typing import Dict, List
 
-from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand, GetItemsCommand,
-                            IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand, QueryIndexCommand,
-                            ResizeIndexCommand, Result, SetEFCommand)
-from luxdb.connection import receive_result_sync, send_close_sync, send_command_sync
+from luxdb.commands import (AddItemsCommand, ConnectCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand,
+                            DeleteItemCommand, GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand,
+                            GetItemsCommand, IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand,
+                            QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
+from luxdb.connection import (gen_key, receive_result_sync, send_close_sync, send_command_sync)
 
 
 class SyncClient:
     """Client to connect to a database. This is the synchronous version of the client."""
-    def __init__(self, host, port):
+    def __init__(self, host, port, secret):
         self.host = host
         self.port = port
 
         self.socket = None
+        self.secret = gen_key(secret)
 
     def connect(self):
         """Connect to the server"""
         self.socket = socket.create_connection((self.host, self.port))
+        connect_command = ConnectCommand()
+
+        try:
+            result = self.send_command(connect_command)
+        except TypeError:
+            result = b''
+
+        if not hmac.compare_digest(connect_command.payload, result):
+            raise RuntimeError('Connect failed, make sure your secret is correct')
 
     def send_command(self, command) -> Result:
         """Send the command to the server and return the result the server sends back."""
-        send_command_sync(self.socket, command)
-        result = receive_result_sync(self.socket)
+        send_command_sync(self.socket, command, self.secret)
+        result = receive_result_sync(self.socket, self.secret)
 
         return result.get_value()
 
@@ -134,9 +145,9 @@ class SyncClient:
 
 
 @contextmanager
-def connect(host, port) -> SyncClient:
+def connect(host, port, secret) -> SyncClient:
     """Provides a context manager for a client connection to host and port"""
-    client = SyncClient(host, port)
+    client = SyncClient(host, port, secret)
     client.connect()
     try:
         yield client

@@ -1,33 +1,48 @@
 """Client to connect to a database server."""
 
 import asyncio
+import hmac
+import logging
 from contextlib import asynccontextmanager
 from typing import Dict, List
 
-from luxdb.commands import (AddItemsCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand, DeleteItemCommand,
-                            GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand, GetItemsCommand,
-                            IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand, QueryIndexCommand,
-                            ResizeIndexCommand, Result, SetEFCommand)
-from luxdb.connection import receive_result, send_close, send_command
+from luxdb.commands import (AddItemsCommand, ConnectCommand, CountCommand, CreateIndexCommand, DeleteIndexCommand,
+                            DeleteItemCommand, GetEFCommand, GetEFConstructionCommand, GetIdsCommand, GetIndexesCommand,
+                            GetItemsCommand, IndexExistsCommand, InfoCommand, InitIndexCommand, MaxElementsCommand,
+                            QueryIndexCommand, ResizeIndexCommand, Result, SetEFCommand)
+from luxdb.connection import gen_key, receive_result, send_close, send_command
+
+LOG = logging.getLogger('client')
 
 
 class Client:
     """Client to connect to a database."""
-    def __init__(self, host, port):
+    def __init__(self, host, port, secret):
         self.host = host
         self.port = port
 
         self.reader = None
         self.writer = None
+        self.secret = gen_key(secret)
 
     async def connect(self):
         """Connect to the server"""
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
 
+        connect_command = ConnectCommand()
+
+        try:
+            result = await self.send_command(connect_command)
+        except TypeError:
+            result = b''
+
+        if not hmac.compare_digest(connect_command.payload, result):
+            raise RuntimeError('Connection failed, make sure your secret is correct')
+
     async def send_command(self, command) -> Result:
         """Send the command to the server and return the result the server sends back."""
-        await send_command(self.writer, command)
-        result = await receive_result(self.reader)
+        await send_command(self.writer, command, self.secret)
+        result = await receive_result(self.reader, self.secret)
 
         return result.get_value()
 
@@ -135,9 +150,9 @@ class Client:
 
 
 @asynccontextmanager
-async def connect(host, port) -> Client:
+async def connect(host, port, secret) -> Client:
     """Provides a context manager for a client connection to host and port"""
-    client = Client(host, port)
+    client = Client(host, port, secret)
     await client.connect()
     try:
         yield client

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import secrets
 from tests import generate_data
 from luxdb.sync_client import SyncClient, connect
 import threading
@@ -8,10 +9,10 @@ from luxdb.knn_store import open_store
 import pytest
 
 
-def server_thread(host, port, path, barrier):
+def server_thread(host, port, secret, path, barrier):
 
     with open_store(path) as store:
-        server = Server(host, port=port, store=store)
+        server = Server(host, port=port, store=store, secret=secret)
         loop = asyncio.new_event_loop()
         loop.set_debug(True)
         logging.basicConfig(level=logging.DEBUG)
@@ -21,20 +22,22 @@ def server_thread(host, port, path, barrier):
 
 @pytest.fixture
 def start_server(tmpdir, unused_tcp_port):
+    secret = secrets.token_hex()
     barrier = threading.Barrier(2, timeout=1)
-    thread = threading.Thread(target=server_thread, args=('127.0.0.1', unused_tcp_port, tmpdir / 'store.db', barrier))
+    thread = threading.Thread(target=server_thread,
+                              args=('127.0.0.1', unused_tcp_port, secret, tmpdir / 'store.db', barrier))
 
     thread.daemon = True
     thread.start()
     barrier.wait()  # Wait til the server is actually listening
-    yield unused_tcp_port
+    yield unused_tcp_port, secret
 
 
 DIMENSION = 50
 
 
-def first_client(port, barrier):
-    with connect('127.0.0.1', port) as client:
+def first_client(port, secret, barrier):
+    with connect('127.0.0.1', port, secret) as client:
 
         # -- Block 00
         name = 'index-01'
@@ -66,8 +69,8 @@ def first_client(port, barrier):
         # --------------------
 
 
-def second_client(port, barrier):
-    with connect('127.0.0.1', port) as client:
+def second_client(port, secret, barrier):
+    with connect('127.0.0.1', port, secret) as client:
 
         # Block 00
         name = 'index-01'
@@ -93,9 +96,9 @@ def second_client(port, barrier):
 # --------------------
 
 
-def third_client(port, barrier):
+def third_client(port, secret, barrier):
     name = 'index-03'
-    with connect('127.0.0.1', port) as client:
+    with connect('127.0.0.1', port, secret) as client:
         # Block 00
         client.create_index(name, 'l2', DIMENSION)
 
@@ -113,7 +116,7 @@ def test_multi_clients(start_server):
 
     client_actions = [first_client, second_client, third_client]
     barrier = threading.Barrier(2, timeout=10)
-    client_threads = [threading.Thread(target=action, args=(start_server, barrier)) for action in client_actions]
+    client_threads = [threading.Thread(target=action, args=(*start_server, barrier)) for action in client_actions]
 
     for thread in client_threads:
         thread.start()
@@ -121,7 +124,7 @@ def test_multi_clients(start_server):
     for thread in client_threads:
         thread.join()
 
-    with connect('127.0.0.1', start_server) as client:
+    with connect('127.0.0.1', *start_server) as client:
         name = 'index-01'
         assert client.index_exists(name)
         assert client.count(name) == 12000 + 5000

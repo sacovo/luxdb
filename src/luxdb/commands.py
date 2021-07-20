@@ -1,6 +1,7 @@
 """This module provides command objects that are sent from the client to the server."""
-from enum import Enum, auto
 import logging
+import secrets
+from enum import Enum, auto
 
 from luxdb.exceptions import KNNBaseException, NotACommandException
 
@@ -68,6 +69,16 @@ async def execute_command(command: Command, store):
     if isinstance(command, Command):
         return await command.execute(store)
     raise NotACommandException('Command is not instance of command!')
+
+
+class ConnectCommand(Command):
+    """Command to test if connection is established."""
+    def __init__(self, **kwargs):
+        self.payload = secrets.token_bytes()
+        super().__init__()
+
+    async def execute_command(self, store, **kwargs):
+        return self.payload
 
 
 class CreateIndexCommand(Command):

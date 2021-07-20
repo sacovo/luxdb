@@ -44,6 +44,7 @@ pytest-job:
   - pip install pip-tools
   - pip-sync requirements.txt dev-requirements.txt
   - pip install -e .
+  - export KDF_ITERATIONS=100 # Keep this low to make tests faster
   stage: test
   coverage: "/^TOTAL.+?(\\d+\\%)$/"
   script:

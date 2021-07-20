@@ -5,21 +5,21 @@ It wraps around https://github.com/nmslib/hnswlib and provides thread safe acces
 The Store can also be saved and loaded onto the disk.
 """
 import asyncio
-from functools import partial
 import concurrent.futures
 import logging
 from contextlib import asynccontextmanager, contextmanager
+from functools import partial
 from typing import Dict
 
-import hnswlib
 import numpy.typing as npt
+
+import hnswlib
 import persistent
 import transaction
 import ZODB
 import ZODB.FileStorage
 from BTrees.OOBTree import \
     OOBTree  # pylint: disable=import-error,no-name-in-module
-
 from luxdb.exceptions import (IndexAlreadyExistsException, IndexDoesNotExistException, UnknownSpaceException)
 from luxdb.index import Index
 
@@ -33,7 +33,7 @@ class KNNStore(persistent.Persistent):
 
     ALLOWED_SPACES = ['l2', 'ip', 'cosine']
 
-    def __init__(self, path: str = None, storage=None):
+    def __init__(self, path: str = None, storage=None, blob_dir=None):
         """Create the database under the specified path or with the given storage.
 
         If `None` is given the database will be created in memory only.
@@ -41,11 +41,11 @@ class KNNStore(persistent.Persistent):
         self.transaction = transaction.TransactionManager()
         if path is not None:
             LOG.debug('Connecting to storage at %s', path)
-            self.storage = ZODB.FileStorage.FileStorage(path)
+            self.storage = ZODB.FileStorage.FileStorage(path, blob_dir=blob_dir)
         else:
             self.storage = storage
 
-        self.db = ZODB.DB(self.storage)
+        self.db = ZODB.DB(self.storage, large_record_size=1 << 32)
 
         if self.storage is None:
             LOG.debug('Creating database in memory.')

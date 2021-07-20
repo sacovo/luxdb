@@ -1,6 +1,8 @@
 # nosec
 """Test client"""
 import asyncio
+import os
+import secrets
 import threading
 
 import pytest
@@ -13,10 +15,10 @@ from luxdb.server import Server
 from tests import generate_data
 
 
-def server_thread(host, port, path, barrier):
+def server_thread(host, port, secret, path, barrier):
 
     with open_store(path) as store:
-        server = Server(host, port=port, store=store)
+        server = Server(host, port=port, store=store, secret=secret)
         loop = asyncio.new_event_loop()
         loop.create_task(server.start(callback=barrier.wait))
         loop.run_forever()
@@ -24,25 +26,27 @@ def server_thread(host, port, path, barrier):
 
 @pytest.fixture
 def start_server(tmpdir, unused_tcp_port):
+    secret = secrets.token_hex()
     barrier = threading.Barrier(2, timeout=1)
-    thread = threading.Thread(target=server_thread, args=('127.0.0.1', unused_tcp_port, tmpdir / 'store.db', barrier))
+    thread = threading.Thread(target=server_thread,
+                              args=('127.0.0.1', unused_tcp_port, secret, tmpdir / 'store.db', barrier))
 
     thread.daemon = True
     thread.start()
     barrier.wait()  # Wait til the server is actually listening
-    yield unused_tcp_port
+    yield unused_tcp_port, secret
 
 
 @pytest.fixture
 async def client(start_server):
-    async with connect('127.0.0.1', start_server) as client:
+    async with connect('127.0.0.1', *start_server) as client:
         yield client
 
 
 class TestClient:
     @pytest.mark.asyncio
     async def test_connect(self, start_server):
-        client = Client('127.0.0.1', start_server)
+        client = Client('127.0.0.1', *start_server)
         assert client.reader is None
         assert client.writer is None
 
@@ -51,10 +55,17 @@ class TestClient:
         assert client.reader is not None and isinstance(client.reader, asyncio.StreamReader)
 
     @pytest.mark.asyncio
+    async def test_invalid_secret(self, start_server):
+        port = start_server[0]
+        client = Client('127.0.0.1', port, '')
+        with pytest.raises(RuntimeError):
+            await client.connect()
+
+    @pytest.mark.asyncio
     async def test_db_empty(self, start_server):
-        async with connect('127.0.0.1', start_server) as client:
+        async with connect('127.0.0.1', *start_server) as client:
             result = await client.index_exists('this-should-not-exist')
-        assert result == False
+            assert result == False
 
     @pytest.mark.asyncio
     async def test_client(self, client):
@@ -67,6 +78,55 @@ class TestClient:
 
         indexes = await client.get_indexes()
         assert len(indexes) == 2
+
+    @pytest.mark.asyncio
+    async def test_add_too_much(self, client):
+        name = 'too-much'
+
+        await client.create_index(name, 'l2', 12)
+        await client.init_index(name, 1000)
+
+        data, ids = generate_data(2000, 12)
+
+        with pytest.raises(RuntimeError):
+            await client.add_items(name, data, ids)
+        await client.resize_index(name, 2000)
+        await client.add_items(name, data, ids)
+        assert await client.count(name) == 2000
+
+    @pytest.mark.asyncio
+    async def test_add_wrong_dimension(self, client):
+        name = 'wrong-dimension'
+        dim = 12
+        await client.create_index(name, 'l2', dim)
+        await client.init_index(name, 1000)
+
+        data, ids = generate_data(500, dim + 4)
+        with pytest.raises(RuntimeError):
+            await client.add_items(name, data, ids)
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(not os.environ.get('RUN_LARGE'), reason='not running large tests')
+    async def test_adding_a_lot(self, client):
+        name = 'big'
+        dim = 100
+        num_items = 100_000
+        await client.create_index(name, 'l2', dim)
+        await client.init_index(name, num_items)
+
+        data, ids = generate_data(num_items, dim)
+
+        await client.add_items(name, data, ids)
+        assert await client.count(name) == num_items
+
+    @pytest.mark.asyncio
+    async def test_init_twice(self, client):
+        name = 'init-twice'
+        await client.create_index(name, 'l2', 12)
+        await client.init_index(name, 1000)
+
+        with pytest.raises(RuntimeError):
+            await client.init_index(name, 1000)
 
     @pytest.mark.asyncio
     async def test_single_connection(self, client):
