@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.5] - 2021-07-20
+### Added
+- Sending of commands and results is encrypted and authenticated
+
 ## [0.0.4] - 2021-07-19
 ### Improved
 - Store uses async lock to allow concurrent operations
