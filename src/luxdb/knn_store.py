@@ -9,7 +9,9 @@ import concurrent.futures
 import logging
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
+from pathlib import Path
 from typing import Dict
+import tempfile
 
 import numpy.typing as npt
 
@@ -33,27 +35,30 @@ class KNNStore(persistent.Persistent):
 
     ALLOWED_SPACES = ['l2', 'ip', 'cosine']
 
-    def __init__(self, path: str = None, storage=None, blob_dir=None):
+    def __init__(self, path: str = None):
         """Create the database under the specified path or with the given storage.
 
         If `None` is given the database will be created in memory only.
         """
         self.transaction = transaction.TransactionManager()
+
         if path is not None:
             LOG.debug('Connecting to storage at %s', path)
-            self.storage = ZODB.FileStorage.FileStorage(path, blob_dir=blob_dir)
+            self.storage = ZODB.FileStorage.FileStorage(path)
+            self.path = Path(path)
+            self.root = None
+            if not self.path.is_dir():
+                self.path = self.path.parent
         else:
-            self.storage = storage
-
-        self.db = ZODB.DB(self.storage, large_record_size=1 << 32)
+            LOG.debug('Creating database in memory.')
+            self.storage = None
+            self.path = Path(tempfile.mkdtemp())
+        self.db = ZODB.DB(self.storage)
+        self.path = self.path / 'indexes'
+        self.path.mkdir(mode=0o700, parents=True, exist_ok=True)
 
         if self.storage is None:
-            LOG.debug('Creating database in memory.')
             self.load_database()
-        else:
-            self.root = None
-
-        self.path = path
 
     def get_index(self, name: str) -> hnswlib.Index:
         """Access the index with the given name."""
@@ -69,12 +74,14 @@ class KNNStore(persistent.Persistent):
         try:
             yield index
         finally:
+            index.write_to_path(self.path)
             index.lock.release_write()
 
     @asynccontextmanager
     async def _index_for_read(self, name: str):
         index: Index = self.get_index(name)
         await index.lock.acquire_read()
+        index.read_from_path(self.path)
         try:
             yield index
         finally:

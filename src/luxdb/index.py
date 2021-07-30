@@ -1,6 +1,9 @@
 """Implementation of persistence."""
 import logging
 from asyncio import Condition, Lock
+from os import PathLike
+from pathlib import Path
+import uuid
 
 import hnswlib
 import persistent
@@ -49,7 +52,10 @@ class Index(persistent.Persistent):
     EXCLUSIVE_STATES = ['add', 'resize', 'query']
 
     def __init__(self, index: hnswlib.Index):
-        self.index = index
+        self._v_index = index
+        self._id = uuid.uuid4()
+        self._dim = index.dim
+        self._space = index.space
         self._v_lock = ReadWriteLock()  # ExclusiveLock(self.EXCLUSIVE_STATES)
 
     @property
@@ -59,9 +65,30 @@ class Index(persistent.Persistent):
             self._v_lock = ReadWriteLock()  # ExclusiveLock(self.EXCLUSIVE_STATES)
         return self._v_lock
 
-    def _mark_change(self):
-        """Mark the index as changed since the latest commit."""
-        self._p_changed = True
+    @property
+    def index(self):
+        """Index object"""
+        return self._v_index
+
+    def _index_path(self, base_directory: PathLike):
+        return base_directory / (self._id.hex + '.bin')
+
+    def write_to_path(self, base_directory: PathLike):
+        """Writes the complete index to a path."""
+        path = self._index_path(base_directory)
+        LOG.info('Writing index to %s', path)
+        self.index.save_index(str(path))
+
+    def read_from_path(self, base_directory: PathLike):
+        """Read index from path."""
+        if not hasattr(self, '_v_index'):
+            self._v_index = hnswlib.Index(space=self._space, dim=self._dim)
+            path: Path = self._index_path(base_directory)
+            if path.exists():
+                LOG.info('Loading index from %s', path)
+                self.index.load_index(str(path))
+            else:
+                LOG.warning('Path %s does not exist.', path)
 
     def init_index(self, max_elements: int, ef_construction: int = 200, M: int = 16):
         """Inits the index and marks the index as changed."""
@@ -70,20 +97,15 @@ class Index(persistent.Persistent):
             ef_construction=ef_construction,
             M=M,
         )
-        self._mark_change()
 
     def add_items(self, data, ids):
         """Add items and mark index as changed."""
         LOG.debug('Adding to index.', stack_info=True)
         self.index.add_items(data, ids)
-        LOG.debug('Added to index.')
-        self._mark_change()
-        LOG.debug('Returning.', stack_info=True)
 
     def set_ef(self, new_ef):
         """Set the the ef."""
         self.index.set_ef(new_ef)
-        self._mark_change()
 
     @property
     def ef(self):
@@ -117,12 +139,10 @@ class Index(persistent.Persistent):
     def resize_index(self, new_size):
         """Resize the index and mark the index."""
         self.index.resize_index(new_size)
-        self._mark_change()
 
     def mark_deleted(self, label):
         """Mark an item as deleted."""
         self.index.mark_deleted(label)
-        self._mark_change()
 
     def get_max_elements(self):
         """Get the maximum number of elements for the index."""
