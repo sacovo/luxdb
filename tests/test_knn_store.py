@@ -1,9 +1,6 @@
 """Test store functionality"""
 import os
-from typing import Tuple
 
-import numpy as np
-import numpy.typing as npt
 import pytest
 
 from luxdb.exceptions import IndexDoesNotExistException

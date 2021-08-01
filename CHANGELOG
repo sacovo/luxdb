@@ -1,4 +1,8 @@
 # Changelog
+## [0.0.6] - 2021-08-01
+### Improved
+- Indexes are stored in a seperate file instead of the zodb db
+- Added a test for indexes
 
 ## [0.0.5] - 2021-07-20
 ### Added

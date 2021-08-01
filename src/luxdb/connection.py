@@ -146,11 +146,6 @@ async def send_result(writer: asyncio.StreamWriter, result: Result, secret: Fern
     await send_obj(writer, result, secret)
 
 
-def send_result_sync(writer: socket.socket, result: Result, secret: Fernet) -> None:
-    'Send the result over the writer synchronously.'
-    send_obj_sync(writer, result, secret)
-
-
 async def send_close(writer: asyncio.StreamWriter) -> None:
     """Sends an empty object to signal closing of the connection and then close the writer."""
     writer.write((0).to_bytes(INT_LENGTH, 'big'))
