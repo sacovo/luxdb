@@ -259,8 +259,7 @@ class KNNStore(persistent.Persistent):
         async with self._index_for_read(name) as index:
             if index.get_current_count() > 0:
                 return index.get_ids()
-            else:
-                return []
+            return []
 
     def get_indexes(self):
         """Returns all indexes in the database."""
