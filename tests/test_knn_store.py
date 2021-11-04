@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from luxdb.exceptions import IndexDoesNotExistException
+from luxdb.exceptions import IndexDoesNotExistException, IndexNotInitializedException
 from luxdb.knn_store import (IndexAlreadyExistsException, KNNStore, UnknownSpaceException, open_store)
 from tests import generate_data
 
@@ -89,6 +89,26 @@ class TestStore:
         assert await store.max_elements(name) == max_elements
         assert await store.count(name) == 0
         assert await store.get_ef_construction(name) == ef_construction
+
+    @pytest.mark.asyncio
+    async def test_fetch_empty_store(self):
+        store = KNNStore()
+
+        store.create_index('test', 'l2', 120)
+        await store.init_index('test', 100)
+
+        assert await store.count('test') == 0
+        assert await store.get_ids('test') == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_non_init_store(self):
+        store = KNNStore()
+
+        store.create_index('test', 'l2', 120)
+
+        with pytest.raises(IndexNotInitializedException):
+            await store.count('test')
+            await store.get_ids('test')
 
     @pytest.mark.asyncio
     async def test_resize_index(self):

@@ -32,3 +32,10 @@ class NotACommandException(KNNBaseException):
     def __init__(self, obj):
         self.obj = obj
         super().__init__(obj)
+
+
+class IndexNotInitializedException(KNNBaseException):
+    """Tried do access an index that was not initialized."""
+    def __init__(self, obj):
+        self.obj = obj
+        super().__init__(obj)

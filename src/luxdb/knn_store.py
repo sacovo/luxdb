@@ -22,7 +22,8 @@ import ZODB
 import ZODB.FileStorage
 from BTrees.OOBTree import \
     OOBTree  # pylint: disable=import-error,no-name-in-module
-from luxdb.exceptions import (IndexAlreadyExistsException, IndexDoesNotExistException, UnknownSpaceException)
+from luxdb.exceptions import (IndexAlreadyExistsException, IndexDoesNotExistException, IndexNotInitializedException,
+                              UnknownSpaceException)
 from luxdb.index import Index
 
 LOG = logging.getLogger('store')
@@ -63,12 +64,26 @@ class KNNStore(persistent.Persistent):
     def get_index(self, name: str) -> hnswlib.Index:
         """Access the index with the given name."""
         try:
-            return self.root['indexes'][name]
+            index = self.root['indexes'][name]
+            return index
         except KeyError as e:
             raise IndexDoesNotExistException(name) from e
 
     @asynccontextmanager
     async def _index_for_write(self, name: str):
+        index: Index = self.get_index(name)
+        await index.lock.acquire_write()
+        index.read_from_path(self.path)
+        if index.M == 0:
+            raise IndexNotInitializedException(name)
+        try:
+            yield index
+        finally:
+            index.write_to_path(self.path)
+            index.lock.release_write()
+
+    @asynccontextmanager
+    async def _index_for_init(self, name: str):
         index: Index = self.get_index(name)
         await index.lock.acquire_write()
         try:
@@ -82,6 +97,8 @@ class KNNStore(persistent.Persistent):
         index: Index = self.get_index(name)
         await index.lock.acquire_read()
         index.read_from_path(self.path)
+        if index.M == 0:
+            raise IndexNotInitializedException(name)
         try:
             yield index
         finally:
@@ -136,7 +153,7 @@ class KNNStore(persistent.Persistent):
         LOG.debug('Initializing index %s with max_elements: %d, ef_construction: %d, M: %d', name, max_elements,
                   ef_construction, M)
 
-        async with self._index_for_write(name) as index:
+        async with self._index_for_init(name) as index:
             index.init_index(
                 max_elements=max_elements,
                 ef_construction=ef_construction,
@@ -233,12 +250,17 @@ class KNNStore(persistent.Persistent):
     async def get_items(self, name: str, ids):
         """get vectors with given labels"""
         async with self._index_for_read(name) as index:
+            if index.get_current_count() > 0:
+                return []
             return index.get_items(ids)
 
     async def get_ids(self, name: str):
         """get all ids in the index"""
         async with self._index_for_read(name) as index:
-            return index.get_ids()
+            if index.get_current_count() > 0:
+                return index.get_ids()
+            else:
+                return []
 
     def get_indexes(self):
         """Returns all indexes in the database."""
