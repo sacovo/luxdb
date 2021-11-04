@@ -49,6 +49,17 @@ class TestClient:
         client.connect()
         assert client.socket is not None and isinstance(client.socket, socket.socket)
 
+    def test_wront_secret_connect(self, start_server):
+        port, _ = start_server
+        secret = 'anything else'
+        client = SyncClient('127.0.0.1', port, secret)
+        assert client.socket is None
+
+        with pytest.raises(RuntimeError):
+            client.connect()
+
+        assert client.socket is None
+
     def test_db_empty(self, start_server):
         with connect('127.0.0.1', *start_server) as client:
             result = client.index_exists('this-should-not-exist')

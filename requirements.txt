@@ -7,7 +7,11 @@
 btrees==4.9.2
     # via zodb
 cffi==1.14.6
-    # via persistent
+    # via
+    #   cryptography
+    #   persistent
+cryptography==35.0.0
+    # via -r requirements.in
 hnswlib==0.5.2
     # via -r requirements.in
 numpy==1.21.0

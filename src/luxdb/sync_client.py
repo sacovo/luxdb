@@ -32,6 +32,8 @@ class SyncClient:
             result = b''
 
         if not hmac.compare_digest(connect_command.payload, result):
+            self.socket.close()
+            self.socket = None
             raise RuntimeError('Connect failed, make sure your secret is correct')
 
     def send_command(self, command) -> Result:
