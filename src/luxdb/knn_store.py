@@ -250,16 +250,16 @@ class KNNStore(persistent.Persistent):
     async def get_items(self, name: str, ids):
         """get vectors with given labels"""
         async with self._index_for_read(name) as index:
-            if index.get_current_count() > 0:
+            if index.get_current_count() == 0:
                 return []
             return index.get_items(ids)
 
     async def get_ids(self, name: str):
         """get all ids in the index"""
         async with self._index_for_read(name) as index:
-            if index.get_current_count() > 0:
-                return index.get_ids()
-            return []
+            if index.get_current_count() == 0:
+                return []
+            return index.get_ids()
 
     def get_indexes(self):
         """Returns all indexes in the database."""
