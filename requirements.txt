@@ -6,7 +6,7 @@
 #
 btrees==4.9.2
     # via zodb
-cffi==1.14.6
+cffi==1.15.0
     # via
     #   cryptography
     #   persistent
@@ -14,7 +14,7 @@ cryptography==35.0.0
     # via -r requirements.in
 hnswlib==0.5.2
     # via -r requirements.in
-numpy==1.21.0
+numpy==1.21.3
     # via hnswlib
 persistent==4.7.0
     # via
@@ -32,7 +32,7 @@ zconfig==3.6.0
     # via zodb
 zodb==5.6.0
     # via -r requirements.in
-zodbpickle==2.0.0
+zodbpickle==2.2.0
     # via zodb
 zope.interface==5.4.0
     # via
