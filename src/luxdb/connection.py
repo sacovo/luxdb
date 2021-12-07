@@ -6,6 +6,7 @@ import os
 import pickle  # nosec
 import socket
 from typing import Tuple
+from asyncio.exceptions import IncompleteReadError
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -62,7 +63,10 @@ def send_obj_sync(writer: socket.socket, obj: any, secret: Fernet) -> None:
 
 async def receive_obj(reader: asyncio.StreamReader, secret: Fernet) -> any:
     """Receive an object over the reader."""
-    size = int.from_bytes(await reader.readexactly(INT_LENGTH), 'big')
+    try:
+        size = int.from_bytes(await reader.readexactly(INT_LENGTH), 'big')
+    except IncompleteReadError:
+        return None
 
     if size == 0:
         LOG.info('Command with size 0 received, return None')

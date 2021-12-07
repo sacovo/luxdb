@@ -6,9 +6,11 @@ import os
 import signal
 import socket
 from functools import partial
+import hnswlib
 
 from cryptography.fernet import InvalidToken
 from luxdb.connection import gen_key, receive_command, send_close, send_result
+from luxdb.index import Index
 from luxdb.knn_store import KNNStore, open_store
 
 LOG = logging.getLogger('server')
@@ -110,6 +112,15 @@ async def serve(args: dict):
         await server.start()
 
 
+async def import_index(args: dict):
+    """Command to import the index."""
+    with open_store(args.path) as store:
+        index = hnswlib.Index(space=args.import_space, dim=args.import_dim)
+        index.load_index(args.import_path)
+        index = Index(index)
+        store.import_index(args.import_name, index)
+
+
 def main():
     """Main method for the server."""
     parser = argparse.ArgumentParser(description='Multidimensional vector database (server).')
@@ -122,6 +133,30 @@ def main():
         default='warning',
         help='Provide logging level. Example --loglevel debug, default=warning',
     )
+    parser.add_argument(
+        '--import-path',
+        type=str,
+        default=None,
+        help="Don't run the server, but import an index. Specify the path",
+    )
+    parser.add_argument(
+        '--import-name',
+        type=str,
+        default=None,
+        help="Don't run the server, but import an index. Specify the name",
+    )
+    parser.add_argument(
+        '--import-space',
+        type=str,
+        default=None,
+        help="Don't run the server, but import an index. Specify the space",
+    )
+    parser.add_argument(
+        '--import-dim',
+        type=int,
+        default=None,
+        help="Don't run the server, but import an index. Specify the dimension",
+    )
     parser.add_argument('--secret',
                         type=str,
                         default=os.environ.get('LUXDB_SECRET', ''),
@@ -129,5 +164,8 @@ def main():
     parser.add_argument('path', type=str, help='Path where the database is stored or should be stored.')
     args = parser.parse_args()
     logging.basicConfig(level=args.loglevel.upper())
+
+    if args.import_path is not None:
+        return asyncio.run(import_index(args), debug=args.loglevel.upper() == 'DEBUG')
 
     return asyncio.run(serve(args), debug=args.loglevel.upper() == 'DEBUG')
