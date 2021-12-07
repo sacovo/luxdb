@@ -24,7 +24,7 @@ lazy-object-proxy==1.6.0
     # via astroid
 mccabe==0.6.1
     # via pylint
-numpy==1.21.3
+numpy==1.21.4
     # via
     #   -c requirements.txt
     #   -r dev-requirements.in

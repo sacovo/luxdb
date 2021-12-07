@@ -1,4 +1,9 @@
 # Changelog
+
+## [0.0.10] - 2021-12-07:
+## Added
+- Command to import an index that is already on the filesystem
+
 ## [0.0.6] - 2021-08-01
 ### Improved
 - Indexes are stored in a seperate file instead of the zodb db

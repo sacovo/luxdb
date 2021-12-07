@@ -29,7 +29,7 @@ from luxdb.index import Index
 LOG = logging.getLogger('store')
 
 
-class KNNStore(persistent.Persistent):
+class KNNStore(persistent.Persistent):  # pylint: disable=too-many-public-methods
     """
     Store multiple indexes with different attributes.
     """
@@ -169,6 +169,15 @@ class KNNStore(persistent.Persistent):
         del self.root['indexes'][name]
         self.transaction.commit()
         LOG.info('Deleted index %s', name)
+
+    def import_index(self, name: str, index: Index) -> None:
+        """Import an index from outside into the store."""
+        if self.index_exists(name):
+            raise IndexAlreadyExistsException(name)
+        index.write_to_path(self.path)
+        self.root['indexes'][name] = index
+        self.transaction.commit()
+        LOG.info('Imported index: %s', name)
 
     async def add_items(self, name: str, data: npt.ArrayLike, ids: npt.ArrayLike):
         """Add the items with the ids to the index."""

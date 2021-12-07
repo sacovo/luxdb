@@ -42,16 +42,16 @@ def first_client(port, secret, barrier):
         # -- Block 00
         name = 'index-01'
         client.create_index(name, 'l2', DIMENSION)
-        client.init_index(name, 15000)
+        client.init_index(name, 1500)
 
         barrier.wait()  # Wait 01
         barrier.reset()
         # --------------------
 
         # -- Block 01
-        client.resize_index(name, 25000)
-        data, ids = generate_data(2500, DIMENSION)
-        client.add_items(name, data, ids + 12000)
+        client.resize_index(name, 2500)
+        data, ids = generate_data(250, DIMENSION)
+        client.add_items(name, data, ids + 1200)
 
         #        assert client.count(name) == 12000 + 2500
         barrier.wait()
@@ -80,16 +80,16 @@ def second_client(port, secret, barrier):
         # Block 01
         assert client.index_exists(name)
 
-        data, ids = generate_data(12000, DIMENSION)
+        data, ids = generate_data(1200, DIMENSION)
         client.add_items(name, data, ids)
 
         barrier.wait()
         # --------------------
 
         # Block 02
-        assert client.max_elements(name) == 25000
-        data, ids = generate_data(2500, DIMENSION)
-        client.add_items(name, data, ids + 12000 + 2500)
+        assert client.max_elements(name) == 2500
+        data, ids = generate_data(250, DIMENSION)
+        client.add_items(name, data, ids + 1200 + 250)
 
 
 #        assert client.count(name) == 12000 + 5000
@@ -102,9 +102,9 @@ def third_client(port, secret, barrier):
         # Block 00
         client.create_index(name, 'l2', DIMENSION)
 
-        client.init_index(name, 20000)
-        assert client.max_elements(name) == 20000
-        data, ids = generate_data(19000, DIMENSION)
+        client.init_index(name, 2000)
+        assert client.max_elements(name) == 2000
+        data, ids = generate_data(1900, DIMENSION)
         client.add_items(name, data, ids)
 
         assert client.count(name) == len(data)
@@ -127,7 +127,7 @@ def test_multi_clients(start_server):
     with connect('127.0.0.1', *start_server) as client:
         name = 'index-01'
         assert client.index_exists(name)
-        assert client.count(name) == 12000 + 5000
+        assert client.count(name) == 1200 + 500
 
         assert client.index_exists('index-03') == False
 

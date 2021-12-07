@@ -2,8 +2,10 @@
 import os
 
 import pytest
+import hnswlib
 
 from luxdb.exceptions import IndexDoesNotExistException, IndexNotInitializedException
+from luxdb.index import Index
 from luxdb.knn_store import (IndexAlreadyExistsException, KNNStore, UnknownSpaceException, open_store)
 from tests import generate_data
 
@@ -209,6 +211,40 @@ class TestStore:
         assert ids[0] not in labels
 
     @pytest.mark.asyncio
+    async def test_import_index(self, tmpdir):
+        path = tmpdir / 'test.db'
+
+        name = 'test-import-index'
+        space = 'l2'
+        dim = 20
+        num_elements = 500
+
+        with open_store(path) as store:
+
+            index = hnswlib.Index(space=space, dim=dim)
+            index.init_index(max_elements=600, ef_construction=100, M=16)
+            data, ids = generate_data(num_elements, dim)
+
+            index.add_items(data, ids)
+
+            index.save_index(str(tmpdir / 'test_index.idx'))
+
+            index = hnswlib.Index(space=space, dim=dim)
+            index.load_index(str(tmpdir / 'test_index.idx'))
+
+            index = Index(index)
+
+            store.import_index(name, index)
+
+            assert store.index_exists(name)
+            assert await store.max_elements(name) == 600
+
+        with open_store(path) as store:
+            assert store.index_exists(name)
+            assert await store.count(name) == num_elements
+            assert await store.max_elements(name) == 600
+
+    @pytest.mark.asyncio
     async def test_store_and_load(self, tmpdir):
         path = tmpdir / 'test.db'
 
@@ -236,6 +272,7 @@ class TestStore:
 
         assert store.index_exists(name)
         assert await store.count(name) == num_elements
+        assert await store.max_elements(name) == max_elements
 
     @pytest.mark.asyncio
     async def test_contextmanager(self, tmpdir):
